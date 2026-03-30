@@ -122,13 +122,13 @@ class Authority(commands.Cog):
             color=config.ANNOUNCE_EMBED_COLOR,
         )
         embed.add_field(name="Issued By", value=ctx.author.mention, inline=False)
-        embed.set_footer(text=f"{config.SERVER_NAME} | Mkhzen Authority System")
+        embed.set_footer(text=f"{config.SERVER_NAME} | L'Mkhzen Authority System")
 
         try:
             await announcements_channel.send(embed=embed)
         except discord.Forbidden:
             await ctx.send(
-                "Authority denied by Discord. Make sure Mkhzen can view and send messages in the announcements channel."
+                "Authority denied by Discord. Make sure L'Mkhzen can view and send messages in the announcements channel."
             )
             return
 

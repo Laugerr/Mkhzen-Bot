@@ -106,14 +106,27 @@ def clear_member_warnings(guild_id: int, member_id: int) -> int:
     return removed_count
 
 
-def load_exiles() -> dict[str, dict[str, dict[str, Any]]]:
+def _normalize_exile_data(data: Any) -> dict[str, Any]:
+    if not isinstance(data, dict):
+        return {"active": {}, "history": {}}
+
+    active = data.get("active")
+    history = data.get("history")
+
+    if isinstance(active, dict) and isinstance(history, dict):
+        return {"active": active, "history": history}
+
+    return {"active": data if isinstance(data, dict) else {}, "history": {}}
+
+
+def load_exiles() -> dict[str, Any]:
     ensure_data_files()
     with EXILES_FILE.open("r", encoding="utf-8") as file:
         data = json.load(file)
-    return data if isinstance(data, dict) else {}
+    return _normalize_exile_data(data)
 
 
-def save_exiles(data: dict[str, dict[str, dict[str, Any]]]) -> None:
+def save_exiles(data: dict[str, Any]) -> None:
     ensure_data_files()
     with EXILES_FILE.open("w", encoding="utf-8") as file:
         json.dump(data, file, indent=2)
@@ -131,39 +144,68 @@ def add_exile(
     member_key = str(member_id)
     now = datetime.now(timezone.utc)
 
-    guild_exiles = exiles_data.setdefault(guild_key, {})
+    active_exiles = exiles_data.setdefault("active", {})
+    history_exiles = exiles_data.setdefault("history", {})
+
+    guild_exiles = active_exiles.setdefault(guild_key, {})
+    guild_history = history_exiles.setdefault(guild_key, {})
+    member_history = guild_history.setdefault(member_key, [])
+
     exile_entry = {
+        "case_id": len(member_history) + 1,
         "member_id": member_id,
         "moderator_id": moderator_id,
         "reason": reason,
         "duration_seconds": duration_seconds,
         "started_at": now.isoformat(),
         "expires_at": (now.timestamp() + duration_seconds),
+        "status": "active",
+        "resolved_at": None,
+        "resolution": None,
     }
     guild_exiles[member_key] = exile_entry
+    member_history.append(dict(exile_entry))
     save_exiles(exiles_data)
     return exile_entry
 
 
 def get_member_exile(guild_id: int, member_id: int) -> dict[str, Any] | None:
     exiles_data = load_exiles()
-    return exiles_data.get(str(guild_id), {}).get(str(member_id))
+    return exiles_data.get("active", {}).get(str(guild_id), {}).get(str(member_id))
 
 
-def clear_member_exile(guild_id: int, member_id: int) -> None:
+def clear_member_exile(guild_id: int, member_id: int, resolution: str | None = None) -> dict[str, Any] | None:
     exiles_data = load_exiles()
     guild_key = str(guild_id)
     member_key = str(member_id)
 
-    guild_exiles = exiles_data.get(guild_key, {})
+    active_exiles = exiles_data.get("active", {})
+    history_exiles = exiles_data.get("history", {})
+
+    guild_exiles = active_exiles.get(guild_key, {})
+    removed_entry = guild_exiles.get(member_key)
     if member_key in guild_exiles:
         del guild_exiles[member_key]
 
-    if not guild_exiles and guild_key in exiles_data:
-        del exiles_data[guild_key]
+    if removed_entry is not None:
+        history_entry_list = history_exiles.get(guild_key, {}).get(member_key, [])
+        if history_entry_list:
+            latest_entry = history_entry_list[-1]
+            latest_entry["status"] = "resolved"
+            latest_entry["resolved_at"] = datetime.now(timezone.utc).isoformat()
+            latest_entry["resolution"] = resolution
+
+    if not guild_exiles and guild_key in active_exiles:
+        del active_exiles[guild_key]
 
     save_exiles(exiles_data)
+    return removed_entry
 
 
 def get_active_exiles() -> dict[str, dict[str, dict[str, Any]]]:
-    return load_exiles()
+    return load_exiles().get("active", {})
+
+
+def get_member_exile_history(guild_id: int, member_id: int) -> list[dict[str, Any]]:
+    exiles_data = load_exiles()
+    return exiles_data.get("history", {}).get(str(guild_id), {}).get(str(member_id), [])

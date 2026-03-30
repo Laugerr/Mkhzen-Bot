@@ -1,1 +1,57 @@
-{}
+{
+  "active": {},
+  "history": {
+    "1410238169345163276": {
+      "1487910794879303801": [
+        {
+          "case_id": 1,
+          "member_id": 1487910794879303801,
+          "moderator_id": 584020336421634048,
+          "reason": "Pending review.",
+          "duration_seconds": 900,
+          "started_at": "2026-03-30T19:54:29.978078+00:00",
+          "expires_at": 1774901369.978078,
+          "status": "resolved",
+          "resolved_at": "2026-03-30T19:56:11.561925+00:00",
+          "resolution": "pardoned"
+        },
+        {
+          "case_id": 2,
+          "member_id": 1487910794879303801,
+          "moderator_id": 584020336421634048,
+          "reason": "Pending review.",
+          "duration_seconds": 720,
+          "started_at": "2026-03-30T19:58:07.190920+00:00",
+          "expires_at": 1774901407.19092,
+          "status": "resolved",
+          "resolved_at": "2026-03-30T20:03:33.785581+00:00",
+          "resolution": "pardoned"
+        },
+        {
+          "case_id": 3,
+          "member_id": 1487910794879303801,
+          "moderator_id": 584020336421634048,
+          "reason": "Pending review.",
+          "duration_seconds": 600,
+          "started_at": "2026-03-30T20:07:40.754840+00:00",
+          "expires_at": 1774901860.75484,
+          "status": "resolved",
+          "resolved_at": "2026-03-30T20:08:22.972769+00:00",
+          "resolution": "pardoned"
+        },
+        {
+          "case_id": 4,
+          "member_id": 1487910794879303801,
+          "moderator_id": 584020336421634048,
+          "reason": "spam",
+          "duration_seconds": 600,
+          "started_at": "2026-03-30T20:12:32.477453+00:00",
+          "expires_at": 1774902152.477453,
+          "status": "resolved",
+          "resolved_at": "2026-03-30T20:16:31.524111+00:00",
+          "resolution": "pardoned"
+        }
+      ]
+    }
+  }
+}

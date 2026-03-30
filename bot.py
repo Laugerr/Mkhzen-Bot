@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent
 COGS_DIR = BASE_DIR / "cogs"
-WATCHING_STATUS = "\U0001f441\ufe0f Mkhzen is watching"
+WATCHING_STATUS = "\U0001f441\ufe0f L'Mkhzen is watching"
 
 
 def configure_logging() -> None:
@@ -31,7 +31,7 @@ def discover_extensions() -> list[str]:
     )
 
 
-class MkhzenBot(commands.Bot):
+class LMkhzenBot(commands.Bot):
     def __init__(self) -> None:
         intents = discord.Intents.default()
         intents.message_content = True
@@ -80,7 +80,7 @@ async def main() -> None:
     if not token:
         raise RuntimeError("DISCORD_TOKEN is not set. Add it to your .env file.")
 
-    bot = MkhzenBot()
+    bot = LMkhzenBot()
     async with bot:
         await bot.start(token)
 

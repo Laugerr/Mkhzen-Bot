@@ -1,6 +1,6 @@
-# 👁️ Mkhzen-Bot
+# 👁️ L'Mkhzen-Bot
 
-Mkhzen is a structured Discord bot built for Medina Hub. It is designed as an authority system inspired by governance, hierarchy, and order, with a minimal and disciplined identity rather than a casual community-bot style.
+L'Mkhzen is a structured Discord bot built for Medina Hub. It is designed as an authority system inspired by governance, hierarchy, and order, with a minimal and disciplined identity rather than a casual community-bot style.
 
 ## ⚙️ Features
 
@@ -8,7 +8,7 @@ Mkhzen is a structured Discord bot built for Medina Hub. It is designed as an au
 - Slash-command support with Discord autocomplete and command hints
 - Environment-based configuration with `python-dotenv`
 - General utility commands for health checks and identity
-- Moderation commands for warnings, warning removal, timed exile, pardon, and server logging
+- Moderation commands for warnings, warning removal, timed exile, exile history, pardon, and server logging
 - Authority commands for rank inspection, hierarchy display, user audits, and channel-based announcements
 - Shared configuration module for role names, hierarchy rules, and channel names
 - Persistent JSON storage for moderation records
@@ -43,7 +43,7 @@ mkhzen-bot/
 ### 🛰️ General
 
 - `/ping` shows bot latency
-- `/about` describes the Mkhzen system
+- `/about` describes the L'Mkhzen system
 - `/status` shows the caller's visible server roles
 
 ### 🛡️ Moderation
@@ -53,6 +53,7 @@ mkhzen-bot/
 - `/unwarn` removes one warning case from a member
 - `/clearwarnings` removes all warnings for a member
 - `/exile` assigns the `Quarantine` role for a timed exile
+- `/exiles` shows exile history for a member
 - `/timeleft` shows the remaining exile duration
 - `/pardon` removes the `Quarantine` role
 
@@ -132,7 +133,6 @@ Default authority roles:
 
 ## 🗺️ Roadmap
 
-- Exile history and case logs
 - Output and embed design refinement
 - Slash command permission refinement
 - Database-backed authority records

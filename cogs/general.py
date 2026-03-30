@@ -12,14 +12,14 @@ class General(commands.Cog):
         latency_ms = round(self.bot.latency * 1000)
         await ctx.send(f"Pong. Latency: `{latency_ms}ms`")
 
-    @commands.hybrid_command(name="about", description="Describe the Mkhzen authority system.")
+    @commands.hybrid_command(name="about", description="Describe the L'Mkhzen authority system.")
     async def about(self, ctx: commands.Context) -> None:
         description = (
-            "Mkhzen is the authority system of Medina Hub: a structured Discord bot "
+            "L'Mkhzen is the authority system of Medina Hub: a structured Discord bot "
             "built around order, hierarchy, and server governance."
         )
         embed = discord.Embed(
-            title="About Mkhzen",
+            title="About L'Mkhzen",
             description=description,
             color=discord.Color.dark_gold(),
         )

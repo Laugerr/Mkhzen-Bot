@@ -13,6 +13,7 @@ from utils.storage import (
     clear_member_exile,
     get_active_exiles,
     get_member_exile,
+    get_member_exile_history,
     get_member_warnings,
     remove_member_warning,
 )
@@ -106,7 +107,7 @@ class Moderation(commands.Cog):
 
                 member = guild.get_member(int(member_id))
                 if member is None:
-                    clear_member_exile(guild.id, int(member_id))
+                    clear_member_exile(guild.id, int(member_id), resolution="member-unavailable")
                     continue
 
                 if quarantine_role in member.roles:
@@ -124,7 +125,7 @@ class Moderation(commands.Cog):
                 log_embed.add_field(name="Original Reason", value=str(exile["reason"]), inline=False)
                 log_embed.add_field(name="Started", value=str(exile["started_at"]), inline=False)
                 await self.send_log_embed(guild, log_embed)
-                clear_member_exile(guild.id, member.id)
+                clear_member_exile(guild.id, member.id, resolution="expired")
 
     @tasks.loop(seconds=30)
     async def exile_release_task(self) -> None:
@@ -323,6 +324,49 @@ class Moderation(commands.Cog):
         log_embed.add_field(name="Reason", value=reason, inline=False)
         await self.send_log_embed(ctx.guild, log_embed)
 
+    @commands.hybrid_command(name="exiles", description="Show exile history for a member.")
+    @app_commands.describe(member="The member whose exile history you want to inspect.")
+    @commands.has_permissions(manage_roles=True)
+    async def exiles(self, ctx: commands.Context, member: discord.Member) -> None:
+        if not ctx.guild:
+            await ctx.send("This command can only be used inside a server.")
+            return
+        if not await self.ensure_moderation_authority(ctx):
+            return
+
+        exile_entries = get_member_exile_history(ctx.guild.id, member.id)
+        if not exile_entries:
+            await ctx.send(f"{member.mention} has no exile history.")
+            return
+
+        embed = discord.Embed(
+            title="Exile History",
+            description=f"Recorded exile actions for {member.mention}",
+            color=config.MODERATION_EMBED_COLOR,
+        )
+
+        for entry in exile_entries[-5:]:
+            moderator = ctx.guild.get_member(int(entry["moderator_id"]))
+            moderator_display = moderator.mention if moderator else f"<@{entry['moderator_id']}>"
+            expires_at = int(float(entry["expires_at"]))
+            resolution = entry.get("resolution") or "active"
+            embed.add_field(
+                name=f"Case #{entry['case_id']}",
+                value=(
+                    f"**Moderator:** {moderator_display}\n"
+                    f"**Duration:** {format_duration(int(entry['duration_seconds']))}\n"
+                    f"**Reason:** {entry['reason']}\n"
+                    f"**Ends:** <t:{expires_at}:F>\n"
+                    f"**Resolution:** {resolution}"
+                ),
+                inline=False,
+            )
+
+        if len(exile_entries) > 5:
+            embed.set_footer(text=f"Showing latest 5 of {len(exile_entries)} exile records.")
+
+        await ctx.send(embed=embed)
+
     @commands.hybrid_command(name="timeleft", description="Show the remaining time on a member's exile.")
     @app_commands.describe(member="The member whose exile timer you want to inspect.")
     @commands.has_permissions(manage_roles=True)
@@ -369,7 +413,7 @@ class Moderation(commands.Cog):
             return
 
         await member.remove_roles(quarantine_role, reason=f"Pardoned by {ctx.author}")
-        clear_member_exile(ctx.guild.id, member.id)
+        clear_member_exile(ctx.guild.id, member.id, resolution="pardoned")
 
         embed = discord.Embed(
             title="Pardon Granted",
@@ -392,6 +436,7 @@ class Moderation(commands.Cog):
     @unwarn.error
     @clearwarnings.error
     @exile.error
+    @exiles.error
     @timeleft.error
     @pardon.error
     async def moderation_error(self, ctx: commands.Context, error: commands.CommandError) -> None:
@@ -415,7 +460,7 @@ class Moderation(commands.Cog):
 
         if isinstance(original_error, discord.Forbidden):
             await ctx.send(
-                "Discord denied this action. Make sure Mkhzen has `Manage Roles` and that the bot role is above "
+                "Discord denied this action. Make sure L'Mkhzen has `Manage Roles` and that the bot role is above "
                 "`Quarantine` and above the target member's highest role."
             )
             return
