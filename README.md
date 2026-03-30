@@ -76,6 +76,7 @@ mkhzen-bot/
 
 - `/testwelcome` sends a test welcome banner
 - `/setupverify` posts the reaction verification panel in `✅┃verify-here`
+- `/setuprules` posts a rules panel in `📜┃rules`
 
 ## 🚀 Setup
 

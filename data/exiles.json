@@ -50,6 +50,42 @@
           "status": "resolved",
           "resolved_at": "2026-03-30T20:16:31.524111+00:00",
           "resolution": "pardoned"
+        },
+        {
+          "case_id": 5,
+          "member_id": 1487910794879303801,
+          "moderator_id": 584020336421634048,
+          "reason": "Pending review.",
+          "duration_seconds": 600,
+          "started_at": "2026-03-30T22:32:49.308732+00:00",
+          "expires_at": 1774910569.308732,
+          "status": "resolved",
+          "resolved_at": "2026-03-30T22:33:08.777840+00:00",
+          "resolution": "pardoned"
+        },
+        {
+          "case_id": 6,
+          "member_id": 1487910794879303801,
+          "moderator_id": 584020336421634048,
+          "reason": "Pending review.",
+          "duration_seconds": 600,
+          "started_at": "2026-03-30T22:34:14.965487+00:00",
+          "expires_at": 1774910654.965487,
+          "status": "resolved",
+          "resolved_at": "2026-03-30T22:42:34.983129+00:00",
+          "resolution": "pardoned"
+        },
+        {
+          "case_id": 7,
+          "member_id": 1487910794879303801,
+          "moderator_id": 584020336421634048,
+          "reason": "Pending review.",
+          "duration_seconds": 600,
+          "started_at": "2026-03-30T22:44:57.590256+00:00",
+          "expires_at": 1774911297.590256,
+          "status": "resolved",
+          "resolved_at": "2026-03-30T22:46:16.606690+00:00",
+          "resolution": "pardoned"
         }
       ]
     }

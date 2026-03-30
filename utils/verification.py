@@ -27,12 +27,20 @@ def save_verification_registry(data: dict[str, dict[str, Any]]) -> None:
         json.dump(data, file, indent=2)
 
 
-def set_verification_message(guild_id: int, channel_id: int, message_id: int, role_name: str, emoji: str) -> None:
+def set_verification_message(
+    guild_id: int,
+    channel_id: int,
+    message_id: int,
+    role_name: str,
+    remove_role_name: str,
+    emoji: str,
+) -> None:
     data = load_verification_registry()
     data[str(guild_id)] = {
         "channel_id": channel_id,
         "message_id": message_id,
         "role_name": role_name,
+        "remove_role_name": remove_role_name,
         "emoji": emoji,
     }
     save_verification_registry(data)
