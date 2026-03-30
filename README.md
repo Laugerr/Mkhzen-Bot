@@ -8,7 +8,7 @@ Mkhzen is a structured Discord bot built for Medina Hub. It is designed as an au
 - Slash-command support with Discord autocomplete and command hints
 - Environment-based configuration with `python-dotenv`
 - General utility commands for health checks and identity
-- Moderation commands for warnings, timed exile, pardon, and server logging
+- Moderation commands for warnings, warning removal, timed exile, pardon, and server logging
 - Authority commands for rank inspection, hierarchy display, user audits, and channel-based announcements
 - Shared configuration module for role names, hierarchy rules, and channel names
 - Persistent JSON storage for moderation records
@@ -50,6 +50,8 @@ mkhzen-bot/
 
 - `/warn` issues a formal warning
 - `/warnings` shows the latest recorded warnings for a member
+- `/unwarn` removes one warning case from a member
+- `/clearwarnings` removes all warnings for a member
 - `/exile` assigns the `Quarantine` role for a timed exile
 - `/timeleft` shows the remaining exile duration
 - `/pardon` removes the `Quarantine` role
@@ -130,7 +132,6 @@ Default authority roles:
 
 ## 🗺️ Roadmap
 
-- Warning removal commands such as `/unwarn` and `/clearwarnings`
 - Exile history and case logs
 - Output and embed design refinement
 - Slash command permission refinement

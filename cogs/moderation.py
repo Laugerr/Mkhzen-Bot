@@ -9,10 +9,12 @@ from utils import config
 from utils.storage import (
     add_exile,
     add_warning,
+    clear_member_warnings,
     clear_member_exile,
     get_active_exiles,
     get_member_exile,
     get_member_warnings,
+    remove_member_warning,
 )
 
 
@@ -200,6 +202,58 @@ class Moderation(commands.Cog):
 
         await ctx.send(embed=embed)
 
+    @commands.hybrid_command(name="unwarn", description="Remove a specific warning case from a member.")
+    @app_commands.describe(member="The member whose warning you want to remove.", case_id="The case number to remove.")
+    @commands.has_permissions(manage_messages=True)
+    async def unwarn(self, ctx: commands.Context, member: discord.Member, case_id: int) -> None:
+        if not ctx.guild:
+            await ctx.send("This command can only be used inside a server.")
+            return
+        if not await self.ensure_moderation_authority(ctx):
+            return
+
+        removed_warning = remove_member_warning(ctx.guild.id, member.id, case_id)
+        if removed_warning is None:
+            await ctx.send(f"No warning case `#{case_id}` was found for {member.mention}.")
+            return
+
+        embed = discord.Embed(
+            title="Warning Removed",
+            description=f"Case `#{case_id}` has been removed for {member.mention}.",
+            color=discord.Color.dark_green(),
+        )
+        embed.add_field(name="Member", value=member.mention, inline=False)
+        embed.add_field(name="Removed By", value=ctx.author.mention, inline=False)
+        embed.add_field(name="Original Reason", value=str(removed_warning["reason"]), inline=False)
+        await ctx.send(embed=embed)
+        await self.send_log_embed(ctx.guild, embed.copy())
+
+    @commands.hybrid_command(name="clearwarnings", description="Remove all warnings recorded for a member.")
+    @app_commands.describe(member="The member whose warnings you want to clear.")
+    @commands.has_permissions(manage_messages=True)
+    async def clearwarnings(self, ctx: commands.Context, member: discord.Member) -> None:
+        if not ctx.guild:
+            await ctx.send("This command can only be used inside a server.")
+            return
+        if not await self.ensure_moderation_authority(ctx):
+            return
+
+        removed_count = clear_member_warnings(ctx.guild.id, member.id)
+        if removed_count == 0:
+            await ctx.send(f"{member.mention} has no recorded warnings to clear.")
+            return
+
+        embed = discord.Embed(
+            title="Warnings Cleared",
+            description=f"All warnings have been cleared for {member.mention}.",
+            color=discord.Color.dark_green(),
+        )
+        embed.add_field(name="Member", value=member.mention, inline=False)
+        embed.add_field(name="Cleared By", value=ctx.author.mention, inline=False)
+        embed.add_field(name="Removed Cases", value=str(removed_count), inline=False)
+        await ctx.send(embed=embed)
+        await self.send_log_embed(ctx.guild, embed.copy())
+
     @commands.hybrid_command(name="exile", description="Place a member in timed quarantine.")
     @app_commands.describe(
         member="The member to exile.",
@@ -335,6 +389,8 @@ class Moderation(commands.Cog):
 
     @warn.error
     @warnings.error
+    @unwarn.error
+    @clearwarnings.error
     @exile.error
     @timeleft.error
     @pardon.error

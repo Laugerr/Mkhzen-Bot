@@ -60,6 +60,52 @@ def get_member_warnings(guild_id: int, member_id: int) -> list[dict[str, Any]]:
     return warnings_data.get(str(guild_id), {}).get(str(member_id), [])
 
 
+def remove_member_warning(guild_id: int, member_id: int, case_id: int) -> dict[str, Any] | None:
+    warnings_data = load_warnings()
+    guild_key = str(guild_id)
+    member_key = str(member_id)
+
+    member_warnings = warnings_data.get(guild_key, {}).get(member_key, [])
+    removed_warning: dict[str, Any] | None = None
+
+    for index, warning in enumerate(member_warnings):
+        if int(warning.get("case_id", 0)) == case_id:
+            removed_warning = member_warnings.pop(index)
+            break
+
+    if removed_warning is None:
+        return None
+
+    for index, warning in enumerate(member_warnings, start=1):
+        warning["case_id"] = index
+
+    if not member_warnings:
+        warnings_data.get(guild_key, {}).pop(member_key, None)
+        if not warnings_data.get(guild_key):
+            warnings_data.pop(guild_key, None)
+
+    save_warnings(warnings_data)
+    return removed_warning
+
+
+def clear_member_warnings(guild_id: int, member_id: int) -> int:
+    warnings_data = load_warnings()
+    guild_key = str(guild_id)
+    member_key = str(member_id)
+
+    member_warnings = warnings_data.get(guild_key, {}).get(member_key, [])
+    removed_count = len(member_warnings)
+    if removed_count == 0:
+        return 0
+
+    warnings_data[guild_key].pop(member_key, None)
+    if not warnings_data[guild_key]:
+        warnings_data.pop(guild_key, None)
+
+    save_warnings(warnings_data)
+    return removed_count
+
+
 def load_exiles() -> dict[str, dict[str, dict[str, Any]]]:
     ensure_data_files()
     with EXILES_FILE.open("r", encoding="utf-8") as file:
