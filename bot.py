@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 BASE_DIR = Path(__file__).resolve().parent
 COGS_DIR = BASE_DIR / "cogs"
 COMMAND_PREFIX = "!"
-WATCHING_STATUS = "\U0001f441\ufe0f Mkhzen is watching"
+WATCHING_STATUS = "\U0001f441\ufe0f حضي كرك"
 
 
 def configure_logging() -> None:

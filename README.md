@@ -7,9 +7,10 @@ Mkhzen is a structured Discord bot built for Medina Hub. It is designed as an au
 - Modular `discord.py` architecture with auto-loaded cogs
 - Environment-based configuration with `python-dotenv`
 - General utility commands for health checks and identity
-- Moderation commands for warnings, exile, and pardon flows
+- Moderation commands for warnings, timed exile, and pardon flows
 - Authority commands for rank inspection and formal announcements
 - Shared configuration module for role names and hierarchy rules
+- Persistent JSON storage for moderation records
 
 ## 🏗️ Project Structure
 
@@ -21,9 +22,14 @@ mkhzen-bot/
 |   |-- authority.py
 |   |-- general.py
 |   `-- moderation.py
+|-- data/
+|   |-- exiles.json
+|   `-- warnings.json
 |-- utils/
 |   |-- __init__.py
-|   `-- config.py
+|   |-- authority.py
+|   |-- config.py
+|   `-- storage.py
 |-- .env
 |-- .gitignore
 |-- requirements.txt
@@ -41,7 +47,9 @@ mkhzen-bot/
 ### 🛡️ Moderation
 
 - `!warn @user [reason]` issues a formal warning
-- `!exile @user [reason]` assigns the `Quarantine` role
+- `!warnings @user` shows the latest recorded warnings for a member
+- `!exile @user <duration> [reason]` assigns the `Quarantine` role for a timed exile
+- `!timeleft @user` shows the remaining exile duration
 - `!pardon @user` removes the `Quarantine` role
 
 ### 👑 Authority
@@ -85,24 +93,28 @@ python bot.py
 
 Role names are centralized in `utils/config.py`. Update them there to match your Discord server exactly.
 
+Moderation records are stored in:
+- `data/warnings.json`
+- `data/exiles.json`
+
 Default authority roles:
 
 - `👑 Sultan 👑`
-- `🏰 Wali 🏰`
-- `☀️ Qaid ☀️`
+- `🕌 Wali 🕌`
+- `🌟 Qaïd 🌟`
 - `🛡️ Sheikh 🛡️`
 - `🗡️ M'qaddem 🗡️`
-- `🪔 F'qihs 🪔`
+- `🪔 F’qihs 🪔`
 - `🏘️ Ahl Al-Medina 🏘️`
 - `📖 Talebs 📖`
 - `🐪 Nomads 🐪`
-- `⛺ Traveler ⛺`
+- `⛺ Travler ⛺`
 - `Quarantine`
 
 ## 🗺️ Roadmap
 
-- Persistent warning storage
-- Case logs and moderation history
+- Warning removal commands such as `!unwarn` and `!clearwarnings`
+- Exile history and case logs
 - Slash command support
 - Permission tiers by rank
 - Database-backed authority records

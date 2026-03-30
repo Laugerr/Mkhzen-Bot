@@ -2,14 +2,7 @@ import discord
 from discord.ext import commands
 
 from utils import config
-
-
-def resolve_rank(member: discord.Member) -> str:
-    member_role_names = {role.name for role in member.roles}
-    for role_name in config.AUTHORITY_HIERARCHY:
-        if role_name in member_role_names:
-            return role_name
-    return "Unranked"
+from utils.authority import has_any_authority_role, resolve_rank
 
 
 class Authority(commands.Cog):
@@ -36,6 +29,15 @@ class Authority(commands.Cog):
     @commands.command(name="announce")
     @commands.has_permissions(manage_guild=True)
     async def announce(self, ctx: commands.Context, *, message: str) -> None:
+        if not isinstance(ctx.author, discord.Member):
+            await ctx.send("This command can only be used inside a server.")
+            return
+
+        if not has_any_authority_role(ctx.author, config.ANNOUNCE_ALLOWED_ROLES):
+            allowed_roles = ", ".join(config.ANNOUNCE_ALLOWED_ROLES)
+            await ctx.send(f"Authority denied. This decree is reserved for: {allowed_roles}.")
+            return
+
         embed = discord.Embed(
             title="Authority Announcement",
             description=message,
@@ -57,7 +59,7 @@ class Authority(commands.Cog):
             return
 
         if isinstance(error, commands.MissingPermissions):
-            await ctx.send("You do not have permission to issue authority announcements.")
+            await ctx.send("You do not meet the Discord permission requirement to issue authority announcements.")
             return
 
         raise error
