@@ -7,9 +7,9 @@ Mkhzen is a structured Discord bot built for Medina Hub. It is designed as an au
 - Modular `discord.py` architecture with auto-loaded cogs
 - Environment-based configuration with `python-dotenv`
 - General utility commands for health checks and identity
-- Moderation commands for warnings, timed exile, and pardon flows
-- Authority commands for rank inspection and formal announcements
-- Shared configuration module for role names and hierarchy rules
+- Moderation commands for warnings, timed exile, pardon, and server logging
+- Authority commands for rank inspection, hierarchy display, user audits, and channel-based announcements
+- Shared configuration module for role names, hierarchy rules, and channel names
 - Persistent JSON storage for moderation records
 
 ## 🏗️ Project Structure
@@ -28,6 +28,7 @@ mkhzen-bot/
 |-- utils/
 |   |-- __init__.py
 |   |-- authority.py
+|   |-- channels.py
 |   |-- config.py
 |   `-- storage.py
 |-- .env
@@ -55,7 +56,9 @@ mkhzen-bot/
 ### 👑 Authority
 
 - `!rank @user` shows a member's hierarchy level
-- `!announce <message>` sends a styled authority announcement
+- `!hierarchy` displays the full authority ladder
+- `!audit @user` shows a member's rank, warning count, exile status, and roles
+- `!announce <message>` sends a styled authority announcement to `📢┃announcements`
 
 ## 🚀 Setup
 
@@ -93,6 +96,13 @@ python bot.py
 
 Role names are centralized in `utils/config.py`. Update them there to match your Discord server exactly.
 
+Channel names are also defined in `utils/config.py`, including:
+- `📂┃server-logs`
+- `📂┃activity-logs`
+- `📢┃announcements`
+- `🛡️┃staff-chat`
+- `🤖bot-test`
+
 Moderation records are stored in:
 - `data/warnings.json`
 - `data/exiles.json`
@@ -115,7 +125,7 @@ Default authority roles:
 
 - Warning removal commands such as `!unwarn` and `!clearwarnings`
 - Exile history and case logs
+- Output and embed design refinement
 - Slash command support
 - Permission tiers by rank
 - Database-backed authority records
-- Versioned architecture for `v2` and `v3`
