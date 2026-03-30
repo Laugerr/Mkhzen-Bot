@@ -1,4 +1,5 @@
 import discord
+from discord import app_commands
 from discord.ext import commands, tasks
 from datetime import datetime, timezone
 
@@ -131,7 +132,8 @@ class Moderation(commands.Cog):
     async def before_exile_release_task(self) -> None:
         await self.bot.wait_until_ready()
 
-    @commands.command(name="warn")
+    @commands.hybrid_command(name="warn", description="Issue and record a formal warning.")
+    @app_commands.describe(member="The member to warn.", reason="The reason for the warning.")
     @commands.has_permissions(manage_messages=True)
     async def warn(self, ctx: commands.Context, member: discord.Member, *, reason: str = "No reason provided.") -> None:
         if not ctx.guild:
@@ -159,7 +161,8 @@ class Moderation(commands.Cog):
         await ctx.send(embed=embed)
         await self.send_log_embed(ctx.guild, embed.copy())
 
-    @commands.command(name="warnings")
+    @commands.hybrid_command(name="warnings", description="Show warning history for a member.")
+    @app_commands.describe(member="The member whose warnings you want to view.")
     @commands.has_permissions(manage_messages=True)
     async def warnings(self, ctx: commands.Context, member: discord.Member) -> None:
         if not ctx.guild:
@@ -197,7 +200,12 @@ class Moderation(commands.Cog):
 
         await ctx.send(embed=embed)
 
-    @commands.command(name="exile")
+    @commands.hybrid_command(name="exile", description="Place a member in timed quarantine.")
+    @app_commands.describe(
+        member="The member to exile.",
+        duration="Exile duration such as 10m, 2h, or 1d.",
+        reason="The reason for the exile.",
+    )
     @commands.has_permissions(manage_roles=True)
     async def exile(
         self,
@@ -261,7 +269,8 @@ class Moderation(commands.Cog):
         log_embed.add_field(name="Reason", value=reason, inline=False)
         await self.send_log_embed(ctx.guild, log_embed)
 
-    @commands.command(name="timeleft")
+    @commands.hybrid_command(name="timeleft", description="Show the remaining time on a member's exile.")
+    @app_commands.describe(member="The member whose exile timer you want to inspect.")
     @commands.has_permissions(manage_roles=True)
     async def timeleft(self, ctx: commands.Context, member: discord.Member) -> None:
         if not ctx.guild:
@@ -286,7 +295,8 @@ class Moderation(commands.Cog):
         embed.add_field(name="Reason", value=str(exile_entry["reason"]), inline=False)
         await ctx.send(embed=embed)
 
-    @commands.command(name="pardon")
+    @commands.hybrid_command(name="pardon", description="Remove quarantine from a member.")
+    @app_commands.describe(member="The member to pardon.")
     @commands.has_permissions(manage_roles=True)
     async def pardon(self, ctx: commands.Context, member: discord.Member) -> None:
         if not ctx.guild:
@@ -333,7 +343,7 @@ class Moderation(commands.Cog):
 
         if isinstance(error, commands.MissingRequiredArgument):
             if ctx.command and ctx.command.name == "exile":
-                await ctx.send("Missing command data. Example: `!exile @user 30m spam`.")
+                await ctx.send("Missing command data. Example: `/exile @user 30m spam`.")
                 return
 
             await ctx.send("You must mention a member to use this command.")

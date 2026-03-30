@@ -1,4 +1,5 @@
 import discord
+from discord import app_commands
 from discord.ext import commands
 
 from utils import config
@@ -11,7 +12,8 @@ class Authority(commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
 
-    @commands.command(name="rank")
+    @commands.hybrid_command(name="rank", description="Show a member's authority rank.")
+    @app_commands.describe(member="The member to inspect. Leave empty to inspect yourself.")
     async def rank(self, ctx: commands.Context, member: discord.Member | None = None) -> None:
         target = member or ctx.author
         if not isinstance(target, discord.Member):
@@ -28,7 +30,7 @@ class Authority(commands.Cog):
         embed.set_footer(text=f"Authority order of {config.SERVER_NAME}")
         await ctx.send(embed=embed)
 
-    @commands.command(name="hierarchy")
+    @commands.hybrid_command(name="hierarchy", description="Display the full authority ladder.")
     async def hierarchy(self, ctx: commands.Context) -> None:
         embed = discord.Embed(
             title="Authority Hierarchy",
@@ -44,7 +46,8 @@ class Authority(commands.Cog):
         embed.set_footer(text="Highest authority appears first")
         await ctx.send(embed=embed)
 
-    @commands.command(name="audit")
+    @commands.hybrid_command(name="audit", description="Show a full audit profile for a member.")
+    @app_commands.describe(member="The member to audit. Leave empty to audit yourself.")
     async def audit(self, ctx: commands.Context, member: discord.Member | None = None) -> None:
         if not ctx.guild:
             await ctx.send("This command can only be used inside a server.")
@@ -93,7 +96,8 @@ class Authority(commands.Cog):
         embed.set_footer(text=f"{config.SERVER_NAME} | Audit Registry")
         await ctx.send(embed=embed)
 
-    @commands.command(name="announce")
+    @commands.hybrid_command(name="announce", description="Send an authority announcement to the announcements channel.")
+    @app_commands.describe(message="The authority message to publish.")
     @commands.has_permissions(manage_guild=True)
     async def announce(self, ctx: commands.Context, *, message: str) -> None:
         if not ctx.guild or not isinstance(ctx.author, discord.Member):
