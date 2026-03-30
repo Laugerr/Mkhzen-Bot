@@ -10,28 +10,36 @@ L'Mkhzen is a structured Discord bot built for Medina Hub. It is designed as an 
 - General utility commands for health checks and identity
 - Moderation commands for warnings, warning removal, timed exile, exile history, pardon, and server logging
 - Authority commands for rank inspection, hierarchy display, user audits, and channel-based announcements
-- Shared configuration module for role names, hierarchy rules, and channel names
-- Persistent JSON storage for moderation records
+- Welcome onboarding messages with a generated banner that places the member avatar into the template
+- Reaction-based verification flow for `✅┃verify-here`
+- Shared configuration module for role names, hierarchy rules, channel names, and welcome assets
+- Persistent JSON storage for moderation and verification records
 
 ## 🏗️ Project Structure
 
 ```text
 mkhzen-bot/
+|-- assets/
+|   `-- welcome-banner.png
 |-- bot.py
 |-- cogs/
 |   |-- __init__.py
 |   |-- authority.py
 |   |-- general.py
-|   `-- moderation.py
+|   |-- moderation.py
+|   `-- onboarding.py
 |-- data/
 |   |-- exiles.json
+|   |-- verification.json
 |   `-- warnings.json
 |-- utils/
 |   |-- __init__.py
 |   |-- authority.py
 |   |-- channels.py
 |   |-- config.py
-|   `-- storage.py
+|   |-- storage.py
+|   |-- verification.py
+|   `-- welcome_card.py
 |-- .env
 |-- .gitignore
 |-- requirements.txt
@@ -64,6 +72,11 @@ mkhzen-bot/
 - `/audit` shows a member's rank, warning count, exile status, and roles
 - `/announce` sends a styled authority announcement to `📢┃announcements`
 
+### 🚪 Onboarding
+
+- `/testwelcome` sends a test welcome banner
+- `/setupverify` posts the reaction verification panel in `✅┃verify-here`
+
 ## 🚀 Setup
 
 1. Create and activate a Python 3 virtual environment.
@@ -95,6 +108,8 @@ DISCORD_GUILD_ID=your_medina_hub_server_id_here
 - Read Message History
 - Embed Links
 - Manage Roles
+- Add Reactions
+- Attach Files
 
 7. Start the bot:
 
@@ -112,10 +127,21 @@ Channel names are also defined in `utils/config.py`, including:
 - `📢┃announcements`
 - `🛡️┃staff-chat`
 - `🤖bot-test`
+- `👋┃welcome`
+- `✅┃verify-here`
 
-Moderation records are stored in:
+Welcome and verification settings include:
+- `WELCOME_BANNER_PATH`
+- `WELCOME_AVATAR_CENTER_X`
+- `WELCOME_AVATAR_CENTER_Y`
+- `WELCOME_AVATAR_SIZE`
+- `VERIFIED_ROLE`
+- `VERIFY_REACTION_EMOJI`
+
+Data files include:
 - `data/warnings.json`
 - `data/exiles.json`
+- `data/verification.json`
 
 Default authority roles:
 
