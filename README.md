@@ -7,6 +7,7 @@ L'Mkhzen is a structured Discord bot built for Medina Hub. It is designed as an 
 - Modular `discord.py` architecture with auto-loaded cogs
 - Slash-command support with Discord autocomplete and command hints
 - Environment-based configuration with `python-dotenv`
+- Startup validation for required roles, channels, and welcome assets
 - General utility commands for health checks and identity
 - Moderation commands for warnings, warning removal, timed exile, exile history, pardon, and server logging
 - Authority commands for rank inspection, hierarchy display, user audits, and channel-based announcements
@@ -38,6 +39,7 @@ mkhzen-bot/
 |   |-- channels.py
 |   |-- config.py
 |   |-- storage.py
+|   |-- validation.py
 |   |-- verification.py
 |   `-- welcome_card.py
 |-- .env
@@ -118,6 +120,8 @@ DISCORD_GUILD_ID=your_medina_hub_server_id_here
 python bot.py
 ```
 
+8. Watch the terminal on startup for validation warnings about missing roles, channels, or welcome assets.
+
 ## 🏷️ Role Configuration
 
 Role names are centralized in `utils/config.py`. Update them there to match your Discord server exactly.
@@ -130,6 +134,7 @@ Channel names are also defined in `utils/config.py`, including:
 - `🤖bot-test`
 - `👋┃welcome`
 - `✅┃verify-here`
+- `📜┃rules`
 
 Welcome and verification settings include:
 - `WELCOME_BANNER_PATH`
@@ -137,6 +142,7 @@ Welcome and verification settings include:
 - `WELCOME_AVATAR_CENTER_Y`
 - `WELCOME_AVATAR_SIZE`
 - `VERIFIED_ROLE`
+- `UNVERIFIED_ROLE`
 - `VERIFY_REACTION_EMOJI`
 
 Data files include:

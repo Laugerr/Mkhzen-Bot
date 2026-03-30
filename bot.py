@@ -6,6 +6,7 @@ from pathlib import Path
 import discord
 from discord.ext import commands
 from dotenv import load_dotenv
+from utils.validation import validate_asset_paths, validate_guild
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -70,6 +71,18 @@ class LMkhzenBot(commands.Bot):
         )
         await self.change_presence(activity=activity)
         logging.info("Connected as %s (%s)", self.user, self.user.id if self.user else "unknown")
+
+        for issue in validate_asset_paths():
+            logging.warning("Startup validation: %s", issue)
+
+        for guild in self.guilds:
+            issues = validate_guild(guild)
+            if not issues:
+                logging.info("Startup validation passed for guild: %s", guild.name)
+                continue
+
+            for issue in issues:
+                logging.warning("Startup validation [%s]: %s", guild.name, issue)
 
 
 async def main() -> None:
