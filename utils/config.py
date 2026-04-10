@@ -58,3 +58,42 @@ MODERATION_ALLOWED_ROLES = [
 ANNOUNCE_EMBED_COLOR = 0x8B1E1E
 MODERATION_EMBED_COLOR = 0xC0392B
 STATUS_EMBED_COLOR = 0x0F766E
+GOVERNANCE_EMBED_COLOR = 0x2C3E50
+PRESTIGE_EMBED_COLOR = 0x8E44AD
+
+# ─── AUTO-ROLE ────────────────────────────────────────────────────────────────
+
+JOIN_AUTO_ROLE = TRAVELER_ROLE
+
+# ─── WARNING THRESHOLD → AUTO-EXILE ──────────────────────────────────────────
+
+WARNING_EXILE_THRESHOLD = 3        # warnings before automatic exile is triggered
+WARNING_EXILE_DURATION = "1h"      # duration string for the auto-exile
+
+# ─── INTEREST ROLES (self-assignable after verification) ─────────────────────
+# Add role names that exist on your server. Leave empty to disable /roles.
+
+INTEREST_ROLES: list[str] = []
+
+# ─── PRESTIGE SYSTEM ─────────────────────────────────────────────────────────
+
+PRESTIGE_XP_PER_MESSAGE = 2        # base XP awarded per eligible message
+PRESTIGE_DAILY_CAP = 100           # max XP earnable from messages per day
+PRESTIGE_XP_COOLDOWN = 60          # seconds between XP-eligible messages per member
+PRESTIGE_DECAY_INACTIVE_DAYS = 30  # days of inactivity before decay begins
+PRESTIGE_DECAY_AMOUNT = 5          # prestige lost per decay cycle
+PRESTIGE_ENFORCE_MINIMUM = False   # if True, /promote is blocked below minimum
+
+PRESTIGE_PROMOTION_MINIMUMS: dict[str, int] = {
+    # role_name: minimum prestige required to be eligible for promotion to that role
+    # Populated as advisory defaults — adjust to match your server's pace
+    NOMADS_ROLE:       0,
+    AHL_AL_MEDINA_ROLE: 100,
+    TALEBS_ROLE:       300,
+    FQIHS_ROLE:        600,
+    MQADDEM_ROLE:      1000,
+    SHEIKH_ROLE:       1500,
+    QAID_ROLE:         2000,
+    WALI_ROLE:         3000,
+    SULTAN_ROLE:       5000,
+}

@@ -44,30 +44,71 @@ class Onboarding(commands.Cog):
                     f"Welcome to {config.SERVER_NAME}, {member.mention}. Present yourself in {verify_reference}."
                 )
         except discord.Forbidden:
-            logger.warning("Cannot send welcome message in guild %s — missing permissions in welcome channel.", guild.id)
+            logger.warning("Cannot send welcome message in guild %s — missing permissions.", guild.id)
             return False
 
         return True
 
+    async def assign_join_role(self, member: discord.Member) -> None:
+        """Assign the configured auto-role to a new member."""
+        if not config.JOIN_AUTO_ROLE:
+            return
+        role = get_role_by_name(member.guild, config.JOIN_AUTO_ROLE)
+        if role is None:
+            logger.warning("Join auto-role '%s' not found in guild %s.", config.JOIN_AUTO_ROLE, member.guild.id)
+            return
+        if role in member.roles:
+            return
+        try:
+            await member.add_roles(role, reason="Auto-assigned on join.")
+        except discord.Forbidden:
+            logger.warning("Cannot assign join role in guild %s — missing Manage Roles.", member.guild.id)
+
+    async def send_welcome_dm(self, member: discord.Member) -> None:
+        """Send a private welcome DM to a new member."""
+        guild = member.guild
+        verify_channel = get_text_channel_by_name(guild, config.VERIFY_CHANNEL)
+        rules_channel = get_text_channel_by_name(guild, config.RULES_CHANNEL)
+
+        embed = discord.Embed(
+            title=f"🏛️ Welcome to {guild.name}",
+            description=(
+                f"You have arrived at the gates of **{config.SERVER_NAME}**.\n\n"
+                "To enter properly and receive access to all channels, you must complete verification."
+            ),
+            color=discord.Color.dark_gold(),
+        )
+        if guild.icon:
+            embed.set_thumbnail(url=guild.icon.url)
+        if verify_channel:
+            embed.add_field(name="✅ Verification", value=f"Head to {verify_channel.mention} and react to complete entry.", inline=False)
+        if rules_channel:
+            embed.add_field(name="📜 Rules", value=f"Read {rules_channel.mention} before verifying.", inline=False)
+        embed.set_footer(text=f"{config.SERVER_NAME} · L'Mkhzen Authority System")
+
+        try:
+            await member.send(embed=embed)
+        except discord.Forbidden:
+            logger.debug("Cannot send welcome DM to %s — DMs disabled.", member.id)
+
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member) -> None:
+        await self.assign_join_role(member)
         await self.send_welcome_message(member)
+        await self.send_welcome_dm(member)
 
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload: discord.RawReactionActionEvent) -> None:
         if payload.guild_id is None:
             return
-
         if self.bot.user and payload.user_id == self.bot.user.id:
             return
 
         registry_entry = get_verification_message(payload.guild_id)
         if registry_entry is None:
             return
-
         if int(registry_entry["message_id"]) != payload.message_id:
             return
-
         if str(payload.emoji) != str(registry_entry["emoji"]):
             return
 
@@ -107,7 +148,7 @@ class Onboarding(commands.Cog):
 
     # ─── SETUPVERIFY ─────────────────────────────────────────────────────────
 
-    @commands.hybrid_command(name="setupverify", description="Post the reaction verification message in the verify channel.")
+    @commands.hybrid_command(name="setupverify", description="Post the reaction verification panel in the verify channel.")
     @commands.has_permissions(manage_guild=True)
     @commands.cooldown(1, 30, commands.BucketType.guild)
     async def setupverify(self, ctx: commands.Context) -> None:
@@ -117,17 +158,17 @@ class Onboarding(commands.Cog):
 
         verify_channel = get_text_channel_by_name(ctx.guild, config.VERIFY_CHANNEL)
         if verify_channel is None:
-            await ctx.send(f'Verification channel not found. Create or rename the channel to `{config.VERIFY_CHANNEL}`.')
+            await ctx.send(f'Verification channel not found. Create or rename to `{config.VERIFY_CHANNEL}`.')
             return
 
         verified_role = get_role_by_name(ctx.guild, config.VERIFIED_ROLE)
         if verified_role is None:
-            await ctx.send(f'Verified role not found. Create or rename the role to `{config.VERIFIED_ROLE}` first.')
+            await ctx.send(f'Verified role not found. Create or rename to `{config.VERIFIED_ROLE}` first.')
             return
 
         unverified_role = get_role_by_name(ctx.guild, config.UNVERIFIED_ROLE)
         if unverified_role is None:
-            await ctx.send(f'Unverified role not found. Create or rename the role to `{config.UNVERIFIED_ROLE}` first.')
+            await ctx.send(f'Unverified role not found. Create or rename to `{config.UNVERIFIED_ROLE}` first.')
             return
 
         rules_channel = get_text_channel_by_name(ctx.guild, config.RULES_CHANNEL)
@@ -160,7 +201,7 @@ class Onboarding(commands.Cog):
             message = await verify_channel.send(embed=embed)
             await message.add_reaction(config.VERIFY_REACTION_EMOJI)
         except discord.Forbidden:
-            await ctx.send("L'Mkhzen cannot send or react in the verification channel. Check channel permissions.")
+            await ctx.send("L'Mkhzen cannot send or react in the verification channel. Check permissions.")
             return
 
         set_verification_message(
@@ -172,12 +213,11 @@ class Onboarding(commands.Cog):
             emoji=config.VERIFY_REACTION_EMOJI,
         )
 
-        confirm = discord.Embed(
+        await ctx.send(embed=discord.Embed(
             title="✅ Verification Panel Ready",
             description=f"Gate posted in {verify_channel.mention}.",
             color=discord.Color.dark_green(),
-        )
-        await ctx.send(embed=confirm)
+        ))
 
     # ─── SETUPRULES ──────────────────────────────────────────────────────────
 
@@ -191,7 +231,7 @@ class Onboarding(commands.Cog):
 
         rules_channel = get_text_channel_by_name(ctx.guild, config.RULES_CHANNEL)
         if rules_channel is None:
-            await ctx.send(f'Rules channel not found. Create or rename the channel to `{config.RULES_CHANNEL}`.')
+            await ctx.send(f'Rules channel not found. Create or rename to `{config.RULES_CHANNEL}`.')
             return
 
         verify_channel = get_text_channel_by_name(ctx.guild, config.VERIFY_CHANNEL)
@@ -204,40 +244,23 @@ class Onboarding(commands.Cog):
         )
         if ctx.guild.icon:
             embed.set_thumbnail(url=ctx.guild.icon.url)
-        embed.add_field(
-            name="⚖️ 1. Respect the Medina",
-            value="Show respect to members, staff, and the structure of the server.",
-            inline=False,
-        )
-        embed.add_field(
-            name="🔇 2. No Disruption",
-            value="Spam, harassment, hate, and repeated disturbance are not tolerated.",
-            inline=False,
-        )
-        embed.add_field(
-            name="🛡️ 3. Follow Authority Guidance",
-            value="Honor moderation decisions and use the proper channels for appeals or questions.",
-            inline=False,
-        )
-        embed.add_field(
-            name="🚪 4. Verification Flow",
-            value=f"If you are not yet admitted, return to {verify_reference} and complete verification.",
-            inline=False,
-        )
+        embed.add_field(name="⚖️ 1. Respect the Medina", value="Show respect to members, staff, and the structure of the server.", inline=False)
+        embed.add_field(name="🔇 2. No Disruption", value="Spam, harassment, hate, and repeated disturbance are not tolerated.", inline=False)
+        embed.add_field(name="🛡️ 3. Follow Authority Guidance", value="Honor moderation decisions and use the proper channels for appeals.", inline=False)
+        embed.add_field(name="🚪 4. Verification Flow", value=f"If not yet admitted, return to {verify_reference} and complete verification.", inline=False)
         embed.set_footer(text="L'Mkhzen · Medina Hub Rules Registry")
 
         try:
             await rules_channel.send(embed=embed)
         except discord.Forbidden:
-            await ctx.send("L'Mkhzen cannot send messages in the rules channel. Check channel permissions.")
+            await ctx.send("L'Mkhzen cannot send messages in the rules channel. Check permissions.")
             return
 
-        confirm = discord.Embed(
+        await ctx.send(embed=discord.Embed(
             title="✅ Rules Panel Posted",
             description=f"Medina Code delivered to {rules_channel.mention}.",
             color=discord.Color.dark_green(),
-        )
-        await ctx.send(embed=confirm)
+        ))
 
     # ─── TESTWELCOME ─────────────────────────────────────────────────────────
 
@@ -251,20 +274,17 @@ class Onboarding(commands.Cog):
 
         sent = await self.send_welcome_message(ctx.author)
         if sent:
-            embed = discord.Embed(
+            await ctx.send(embed=discord.Embed(
                 title="✅ Test Welcome Sent",
                 description="Welcome banner delivered to the welcome channel.",
                 color=discord.Color.dark_green(),
-            )
-            await ctx.send(embed=embed)
-            return
-
-        embed = discord.Embed(
-            title="❌ Delivery Failed",
-            description="Welcome message could not be sent. Check the welcome channel name and L'Mkhzen's permissions.",
-            color=discord.Color.red(),
-        )
-        await ctx.send(embed=embed)
+            ))
+        else:
+            await ctx.send(embed=discord.Embed(
+                title="❌ Delivery Failed",
+                description="Welcome message could not be sent. Check the welcome channel and L'Mkhzen's permissions.",
+                color=discord.Color.red(),
+            ))
 
 
 async def setup(bot: commands.Bot) -> None:
