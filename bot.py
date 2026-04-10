@@ -32,6 +32,36 @@ def discover_extensions() -> list[str]:
     )
 
 
+async def start_healthcheck_server() -> asyncio.AbstractServer | None:
+    port = os.getenv("PORT")
+    if not port:
+        return None
+
+    async def handle_healthcheck(
+        reader: asyncio.StreamReader, writer: asyncio.StreamWriter
+    ) -> None:
+        try:
+            await reader.read(1024)
+            body = b"ok"
+            response = (
+                b"HTTP/1.1 200 OK\r\n"
+                b"Content-Type: text/plain; charset=utf-8\r\n"
+                b"Content-Length: 2\r\n"
+                b"Connection: close\r\n"
+                b"\r\n"
+                + body
+            )
+            writer.write(response)
+            await writer.drain()
+        finally:
+            writer.close()
+            await writer.wait_closed()
+
+    server = await asyncio.start_server(handle_healthcheck, host="0.0.0.0", port=int(port))
+    logging.info("Health check server listening on port %s", port)
+    return server
+
+
 class LMkhzenBot(commands.Bot):
     def __init__(self) -> None:
         intents = discord.Intents.default()
@@ -93,9 +123,15 @@ async def main() -> None:
     if not token:
         raise RuntimeError("DISCORD_TOKEN is not set. Add it to your .env file.")
 
+    healthcheck_server = await start_healthcheck_server()
     bot = LMkhzenBot()
     async with bot:
-        await bot.start(token)
+        try:
+            await bot.start(token)
+        finally:
+            if healthcheck_server is not None:
+                healthcheck_server.close()
+                await healthcheck_server.wait_closed()
 
 
 if __name__ == "__main__":
