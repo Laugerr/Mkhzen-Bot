@@ -94,6 +94,24 @@ class LMkhzenBot(commands.Bot):
         synced = await self.tree.sync()
         logging.info("Synced %s global slash commands", len(synced))
 
+    async def on_command_error(self, ctx: commands.Context, error: commands.CommandError) -> None:
+        if isinstance(error, commands.CommandNotFound):
+            return
+        if hasattr(ctx.command, "on_error"):
+            return
+        if isinstance(error, commands.CommandOnCooldown):
+            embed = discord.Embed(
+                title="⏱️ Slow Down",
+                description=f"Try again in **{error.retry_after:.1f}s**.",
+                color=discord.Color.orange(),
+            )
+            await ctx.send(embed=embed)
+            return
+        if isinstance(error, (commands.MissingPermissions, commands.CheckFailure)):
+            await ctx.send("You do not have permission to use this command.")
+            return
+        logging.exception("Unhandled command error in %s", ctx.command, exc_info=error)
+
     async def on_ready(self) -> None:
         activity = discord.Activity(
             type=discord.ActivityType.watching,

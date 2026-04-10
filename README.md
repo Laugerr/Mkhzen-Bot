@@ -1,111 +1,132 @@
 # 👁️ L'Mkhzen-Bot
 
-L'Mkhzen is a structured Discord bot built for Medina Hub. It is designed as an authority system inspired by governance, hierarchy, and order, with a minimal and disciplined identity rather than a casual community-bot style.
+L'Mkhzen is the authority system of **Medina Hub** — a structured Discord bot built around governance, hierarchy, and server order. Disciplined by design, not casual.
 
-## ⚙️ Features
+---
 
-- Modular `discord.py` architecture with auto-loaded cogs
-- Slash-command support with Discord autocomplete and command hints
-- Environment-based configuration with `python-dotenv`
-- Startup validation for required roles, channels, and welcome assets
-- General utility commands for health checks and identity
-- Moderation commands for warnings, warning removal, timed exile, exile history, pardon, and server logging
-- Authority commands for rank inspection, hierarchy display, user audits, and channel-based announcements
-- Welcome onboarding messages with a generated banner that places the member avatar into the template
-- Reaction-based verification flow for `✅┃verify-here`
-- Shared configuration module for role names, hierarchy rules, channel names, and welcome assets
-- Persistent JSON storage for moderation and verification records
+## ✨ Features
+
+- 🧩 Modular `discord.py` architecture with auto-loaded cogs
+- ⚡ Slash-command support with Discord autocomplete
+- 🔐 Environment-based configuration with `python-dotenv`
+- 🩺 Startup validation for required roles, channels, and welcome assets
+- 🛡️ Moderation system: warnings, timed exile, pardon, and persistent case history
+- 👑 Authority system: rank inspection, hierarchy display, user audits, and decrees
+- 🖼️ Welcome banner with member avatar composited at join
+- ✅ Reaction-based verification gate with role transition
+- 📋 Paginated output — navigate warning/exile history with ◀ Prev / Next ▶ buttons
+- 🆔 Stable case IDs — removed warnings never cause ID renumbering
+- ⏱️ Rate limiting on all commands to prevent abuse
+- 📡 Global error handler for clean, styled error responses
+- 🔊 Structured audit logging for every moderation action
+
+---
 
 ## 🏗️ Project Structure
 
 ```text
 mkhzen-bot/
-|-- assets/
-|   `-- welcome-banner.png
-|-- bot.py
-|-- cogs/
-|   |-- __init__.py
-|   |-- authority.py
-|   |-- general.py
-|   |-- moderation.py
-|   `-- onboarding.py
-|-- data/
-|   |-- exiles.json
-|   |-- verification.json
-|   `-- warnings.json
-|-- utils/
-|   |-- __init__.py
-|   |-- authority.py
-|   |-- channels.py
-|   |-- config.py
-|   |-- storage.py
-|   |-- validation.py
-|   |-- verification.py
-|   `-- welcome_card.py
-|-- .env
-|-- .gitignore
-|-- requirements.txt
-`-- README.md
+├── assets/
+│   └── welcome-banner.png
+├── bot.py
+├── cogs/
+│   ├── __init__.py
+│   ├── authority.py
+│   ├── general.py
+│   ├── moderation.py
+│   └── onboarding.py
+├── data/
+│   ├── exiles.json
+│   ├── verification.json
+│   └── warnings.json
+├── utils/
+│   ├── __init__.py
+│   ├── authority.py
+│   ├── channels.py
+│   ├── config.py
+│   ├── paginator.py
+│   ├── roles.py
+│   ├── storage.py
+│   ├── validation.py
+│   ├── verification.py
+│   └── welcome_card.py
+├── .env
+├── .gitignore
+├── requirements.txt
+└── README.md
 ```
+
+---
 
 ## 🧾 Commands
 
 ### 🛰️ General
 
-- `/ping` shows bot latency
-- `/about` describes the L'Mkhzen system
-- `/status` shows the caller's visible server roles
+| Command | Description |
+|---|---|
+| `/ping` | 🏓 Show bot latency with signal quality indicator |
+| `/about` | 👁️ Describe the L'Mkhzen authority system |
+| `/status` | 🪪 Show your current rank and visible server roles |
 
 ### 🛡️ Moderation
 
-- `/warn` issues a formal warning
-- `/warnings` shows the latest recorded warnings for a member
-- `/unwarn` removes one warning case from a member
-- `/clearwarnings` removes all warnings for a member
-- `/exile` assigns the `Quarantine` role for a timed exile
-- `/exiles` shows exile history for a member
-- `/timeleft` shows the remaining exile duration
-- `/pardon` removes the `Quarantine` role
+| Command | Description |
+|---|---|
+| `/warn` | ⚠️ Issue a formal warning with a persistent case ID |
+| `/warnings` | 📋 Browse a member's full warning history (paginated) |
+| `/unwarn` | ✅ Remove a specific warning case by ID |
+| `/clearwarnings` | 🧹 Purge all warnings for a member |
+| `/exile` | ⛓️ Assign timed quarantine (`10m`, `2h`, `1d`) |
+| `/exiles` | 📜 Browse a member's full exile history (paginated) |
+| `/timeleft` | ⏳ Show remaining time on an active exile |
+| `/pardon` | 🕊️ Release a member from quarantine early |
 
 ### 👑 Authority
 
-- `/rank` shows a member's hierarchy level
-- `/hierarchy` displays the full authority ladder
-- `/audit` shows a member's rank, warning count, exile status, and roles
-- `/announce` sends a styled authority announcement to `📢┃announcements`
+| Command | Description |
+|---|---|
+| `/rank` | 🏅 Show a member's hierarchy tier and badge |
+| `/hierarchy` | 👑 Display the full authority ladder (paginated) |
+| `/audit` | 🔍 Full dossier: rank, status, warnings, exile, roles |
+| `/announce` | 📣 Send an official decree to the announcements channel |
 
 ### 🚪 Onboarding
 
-- `/testwelcome` sends a test welcome banner
-- `/setupverify` posts the reaction verification panel in `✅┃verify-here`
-- `/setuprules` posts a rules panel in `📜┃rules`
+| Command | Description |
+|---|---|
+| `/testwelcome` | 🖼️ Send a test welcome banner to yourself |
+| `/setupverify` | ✅ Post the reaction verification gate |
+| `/setuprules` | 📜 Post the Medina Code rules panel |
+
+---
 
 ## 🚀 Setup
 
-1. Create and activate a Python 3 virtual environment.
-2. Install dependencies:
+**1.** Create and activate a Python 3 virtual environment.
+
+**2.** Install dependencies:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-3. Add your bot token to `.env`:
+**3.** Add your bot token to `.env`:
 
 ```env
 DISCORD_TOKEN=your_token_here
 ```
 
-4. Optional for faster local slash-command sync, add your server ID:
+**4.** *(Optional)* For faster local slash-command sync, add your server ID:
 
 ```env
 DISCORD_GUILD_ID=your_medina_hub_server_id_here
 ```
 
-5. In the Discord Developer Portal:
-- enable `MESSAGE CONTENT INTENT`
-- enable `SERVER MEMBERS INTENT`
+**5.** In the **Discord Developer Portal**, enable:
+- `MESSAGE CONTENT INTENT`
+- `SERVER MEMBERS INTENT`
 
-6. Invite the bot to your server with these permissions:
+**6.** Invite the bot with these permissions:
 - View Channels
 - Send Messages
 - Read Message History
@@ -114,58 +135,74 @@ DISCORD_GUILD_ID=your_medina_hub_server_id_here
 - Add Reactions
 - Attach Files
 
-7. Start the bot:
+**7.** Start the bot:
 
 ```bash
 python bot.py
 ```
 
-8. Watch the terminal on startup for validation warnings about missing roles, channels, or welcome assets.
+**8.** Watch the terminal on startup — validation warnings will surface any missing roles, channels, or welcome assets.
 
-## 🏷️ Role Configuration
+---
 
-Role names are centralized in `utils/config.py`. Update them there to match your Discord server exactly.
+## 🏷️ Configuration
 
-Channel names are also defined in `utils/config.py`, including:
-- `📂┃server-logs`
-- `📂┃activity-logs`
-- `📢┃announcements`
-- `🛡️┃staff-chat`
-- `🤖bot-test`
-- `👋┃welcome`
-- `✅┃verify-here`
-- `📜┃rules`
+All role names and channel names are centralized in `utils/config.py`. Update them there to match your Discord server exactly.
 
-Welcome and verification settings include:
-- `WELCOME_BANNER_PATH`
-- `WELCOME_AVATAR_CENTER_X`
-- `WELCOME_AVATAR_CENTER_Y`
-- `WELCOME_AVATAR_SIZE`
-- `VERIFIED_ROLE`
-- `UNVERIFIED_ROLE`
-- `VERIFY_REACTION_EMOJI`
+### 🎭 Default Authority Roles
 
-Data files include:
-- `data/warnings.json`
-- `data/exiles.json`
-- `data/verification.json`
+| Rank | Role Name |
+|---|---|
+| 👑 1 | `👑 Sultan 👑` |
+| 🥇 2 | `🕌 Wali 🕌` |
+| 🥈 3 | `🌟 Qaïd 🌟` |
+| 🥉 4 | `🛡️ Sheikh 🛡️` |
+| 🏅 5 | `🗡️ M'qaddem 🗡️` |
+| 🎖️ 6 | `🪔 F'qihs 🪔` |
+| ⚜️ 7 | `🏘️ Ahl Al-Medina 🏘️` |
+| 📜 8 | `📖 Talebs 📖` |
+| 🌿 9 | `🐪 Nomads 🐪` |
+| ⛺ 10 | `⛺ Travler ⛺` |
+| 🔒 — | `Quarantine` |
 
-Default authority roles:
+### 📡 Default Channels
 
-- `👑 Sultan 👑`
-- `🕌 Wali 🕌`
-- `🌟 Qaïd 🌟`
-- `🛡️ Sheikh 🛡️`
-- `🗡️ M'qaddem 🗡️`
-- `🪔 F’qihs 🪔`
-- `🏘️ Ahl Al-Medina 🏘️`
-- `📖 Talebs 📖`
-- `🐪 Nomads 🐪`
-- `⛺ Travler ⛺`
-- `Quarantine`
+| Channel | Purpose |
+|---|---|
+| `📂┃server-logs` | 🛡️ Moderation log destination |
+| `📂┃activity-logs` | 📊 Activity log destination |
+| `📢┃announcements` | 📣 Authority announcement target |
+| `🛡️┃staff-chat` | 🔐 Staff private channel |
+| `🤖bot-test` | 🧪 Bot testing channel |
+| `👋┃welcome` | 🖼️ Welcome banner destination |
+| `✅┃verify-here` | ✅ Verification gate channel |
+| `📜┃rules` | 📜 Rules panel channel |
+
+### 🖼️ Welcome Banner Settings
+
+| Setting | Key |
+|---|---|
+| Banner path | `WELCOME_BANNER_PATH` |
+| Avatar center X | `WELCOME_AVATAR_CENTER_X` |
+| Avatar center Y | `WELCOME_AVATAR_CENTER_Y` |
+| Avatar size (px) | `WELCOME_AVATAR_SIZE` |
+| Verified role | `VERIFIED_ROLE` |
+| Unverified role | `UNVERIFIED_ROLE` |
+| Reaction emoji | `VERIFY_REACTION_EMOJI` |
+
+### 💾 Data Files
+
+| File | Contents |
+|---|---|
+| `data/warnings.json` | ⚠️ Warning case records |
+| `data/exiles.json` | ⛓️ Exile history and active exiles |
+| `data/verification.json` | ✅ Verification gate registry |
+
+---
 
 ## 🗺️ Roadmap
 
-- Output and embed design refinement
-- Slash command permission refinement
-- Database-backed authority records
+- 🗄️ Database-backed authority records
+- 🔁 Hot-reload config without bot restart
+- 📊 Activity tracking and member stats
+- 🛂 Appeal system for exile reviews

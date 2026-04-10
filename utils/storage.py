@@ -44,10 +44,11 @@ def add_warning(
     guild_warnings = warnings_data.setdefault(guild_key, {})
     member_warnings = guild_warnings.setdefault(member_key, [])
 
+    next_id = max((int(w["case_id"]) for w in member_warnings), default=0) + 1
     warning_entry = {
-        "case_id": len(member_warnings) + 1,
+        "case_id": next_id,
         "moderator_id": moderator_id,
-        "reason": reason,
+        "reason": reason[:500],
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
     member_warnings.append(warning_entry)
@@ -75,9 +76,6 @@ def remove_member_warning(guild_id: int, member_id: int, case_id: int) -> dict[s
 
     if removed_warning is None:
         return None
-
-    for index, warning in enumerate(member_warnings, start=1):
-        warning["case_id"] = index
 
     if not member_warnings:
         warnings_data.get(guild_key, {}).pop(member_key, None)
@@ -152,10 +150,10 @@ def add_exile(
     member_history = guild_history.setdefault(member_key, [])
 
     exile_entry = {
-        "case_id": len(member_history) + 1,
+        "case_id": max((int(e["case_id"]) for e in member_history), default=0) + 1,
         "member_id": member_id,
         "moderator_id": moderator_id,
-        "reason": reason,
+        "reason": reason[:500],
         "duration_seconds": duration_seconds,
         "started_at": now.isoformat(),
         "expires_at": (now.timestamp() + duration_seconds),
