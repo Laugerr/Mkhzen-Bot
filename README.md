@@ -10,8 +10,10 @@ L'Mkhzen is the authority system of **Medina Hub** — a structured Discord bot 
 - ⚡ Slash-command support with Discord autocomplete
 - 🔐 Environment-based configuration with `python-dotenv`
 - 🩺 Startup validation for required roles, channels, and welcome assets
-- 🛡️ Full moderation suite: warnings, exile, pardon, ban, expel, staff notes
+- 🛡️ Full moderation suite: warnings, exile, pardon, ban, expel, purge, staff notes
 - ⚠️ Auto-exile triggered when a member reaches the warning threshold
+- 🤖 Auto-mod: configurable spam detection and banned-word filter with auto-warn
+- 📬 Moderation DMs — members are notified on warn, exile, pardon, and auto-release
 - 👑 Authority system: rank, hierarchy, audit, promote, demote, decrees, and stats
 - 🗳️ Council votes with live Aye/Nay buttons and auto-close
 - 📨 Member appeal system with staff review and DM resolution
@@ -40,10 +42,11 @@ mkhzen-bot/
 ├── cogs/
 │   ├── __init__.py
 │   ├── authority.py       👑 Rank, hierarchy, audit, promote, demote, stats
+│   ├── automod.py         🤖 Spam detection and banned-word auto-mod
 │   ├── general.py         🛰️ Ping, about, status
 │   ├── governance.py      🏛️ Decrees, votes, appeals, interest roles
 │   ├── logging.py         📡 Event logging (joins, messages, roles, bans)
-│   ├── moderation.py      🛡️ Warnings, exile, pardon, ban, expel, notes
+│   ├── moderation.py      🛡️ Warnings, exile, pardon, ban, expel, purge, notes
 │   ├── onboarding.py      🚪 Welcome, verify, rules, auto-role
 │   └── prestige.py        ⭐ XP system, leaderboard, honour
 ├── data/
@@ -105,6 +108,7 @@ mkhzen-bot/
 | `/note` | 📌 Add a private staff note on a member |
 | `/notes` | 📌 View all staff notes on a member |
 | `/delnote` | 🗑️ Delete a specific staff note |
+| `/purge` | 🧹 Bulk-delete up to 100 messages, with optional member filter |
 
 ### 👑 Authority
 
@@ -271,6 +275,12 @@ All settings live in `utils/config.py`. Update them to match your server.
 | `PRESTIGE_DECAY_INACTIVE_DAYS` | `30` | Days of inactivity before decay |
 | `PRESTIGE_DECAY_AMOUNT` | `5` | Prestige lost per decay cycle |
 | `PRESTIGE_ENFORCE_MINIMUM` | `False` | Block `/promote` below prestige minimum |
+| `AUTOMOD_ENABLED` | `True` | Master switch for auto-mod |
+| `AUTOMOD_SPAM_THRESHOLD` | `5` | Messages within the spam window before auto-warn |
+| `AUTOMOD_SPAM_WINDOW` | `5s` | Rolling window for spam detection |
+| `AUTOMOD_BANNED_WORDS` | `[]` | Case-insensitive substrings — message deleted + auto-warn |
+| `AUTOMOD_IGNORED_CHANNELS` | `[bot-test]` | Channels excluded from auto-mod |
+| `AUTOMOD_IGNORED_ROLES` | Sultan → Sheikh | Roles exempt from auto-mod |
 
 ### 💾 Data Files
 

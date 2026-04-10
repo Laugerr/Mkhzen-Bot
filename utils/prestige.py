@@ -30,22 +30,17 @@ def _blank() -> dict[str, Any]:
     return {
         "prestige": 0,
         "daily_xp": 0,
+        "daily_voice_xp": 0,
         "daily_reset": now,
         "last_active": now,
         "honour_total": 0,
+        "streak": 0,
+        "last_streak_date": "",
     }
 
 
-def get_member_prestige(guild_id: int, member_id: int) -> dict[str, Any]:
-    return _load().get(str(guild_id), {}).get(str(member_id), _blank())
-
-
-def add_message_xp(guild_id: int, member_id: int, amount: int, daily_cap: int) -> int:
-    """Award XP from a message. Returns XP actually granted (0 if daily cap hit)."""
-    data = _load()
-    entry = data.setdefault(str(guild_id), {}).setdefault(str(member_id), _blank())
-    now = datetime.now(timezone.utc)
-
+def _handle_daily_reset(entry: dict[str, Any], now: datetime) -> None:
+    """Reset per-day counters if 24 hours have elapsed."""
     try:
         reset_time = datetime.fromisoformat(entry["daily_reset"])
     except (ValueError, KeyError):
@@ -53,17 +48,100 @@ def add_message_xp(guild_id: int, member_id: int, amount: int, daily_cap: int) -
 
     if (now - reset_time).total_seconds() >= 86400:
         entry["daily_xp"] = 0
+        entry["daily_voice_xp"] = 0
         entry["daily_reset"] = now.isoformat()
 
+
+def get_prestige_tier(score: int) -> tuple[str, str]:
+    """Return (tier_label, badge) based on prestige score."""
+    thresholds = [
+        (5000, "⭐ Legendary", "🌟"),
+        (2000, "💎 Diamond",   "💎"),
+        (1000, "🏆 Platinum",  "🏆"),
+        (500,  "🥇 Gold",      "🥇"),
+        (200,  "🥈 Silver",    "🥈"),
+        (50,   "🥉 Bronze",    "🥉"),
+        (0,    "🔘 Newcomer",  "🔘"),
+    ]
+    for threshold, label, badge in thresholds:
+        if score >= threshold:
+            return label, badge
+    return "🔘 Newcomer", "🔘"
+
+
+def get_member_prestige(guild_id: int, member_id: int) -> dict[str, Any]:
+    return _load().get(str(guild_id), {}).get(str(member_id), _blank())
+
+
+def add_message_xp(
+    guild_id: int,
+    member_id: int,
+    amount: int,
+    daily_cap: int,
+    streak_bonus_per_day: int = 0,
+    streak_max_bonus: int = 0,
+) -> tuple[int, int, int]:
+    """Award XP from a message.
+
+    Returns (xp_awarded, streak_bonus, new_prestige).
+    streak_bonus is only awarded on the first eligible message of each day.
+    Streak bonus does NOT count toward the daily cap.
+    """
+    data = _load()
+    entry = data.setdefault(str(guild_id), {}).setdefault(str(member_id), _blank())
+    now = datetime.now(timezone.utc)
+    today = now.date().isoformat()
+
+    _handle_daily_reset(entry, now)
     entry["last_active"] = now.isoformat()
 
     if entry["daily_xp"] >= daily_cap:
         _save(data)
+        return 0, 0, entry.get("prestige", 0)
+
+    # ── Streak handling ───────────────────────────────────────────────────────
+    streak_bonus = 0
+    last_streak_date = entry.get("last_streak_date", "")
+
+    if last_streak_date != today:
+        yesterday = (now.date() - timedelta(days=1)).isoformat()
+        if last_streak_date == yesterday:
+            entry["streak"] = entry.get("streak", 0) + 1
+        else:
+            entry["streak"] = 1
+        entry["last_streak_date"] = today
+
+        if streak_bonus_per_day > 0:
+            streak_days = entry["streak"]
+            streak_bonus = min((streak_days - 1) * streak_bonus_per_day, streak_max_bonus)
+
+    # ── Base XP ───────────────────────────────────────────────────────────────
+    awarded = min(amount, daily_cap - entry["daily_xp"])
+    entry["daily_xp"] += awarded
+    entry["prestige"] = entry.get("prestige", 0) + awarded + streak_bonus
+
+    _save(data)
+    return awarded, streak_bonus, entry["prestige"]
+
+
+def add_voice_xp(guild_id: int, member_id: int, amount: int, daily_cap: int) -> int:
+    """Award XP earned from voice activity. Returns XP actually granted (0 if daily cap hit)."""
+    data = _load()
+    entry = data.setdefault(str(guild_id), {}).setdefault(str(member_id), _blank())
+    now = datetime.now(timezone.utc)
+
+    _handle_daily_reset(entry, now)
+    entry.setdefault("daily_voice_xp", 0)
+    entry["last_active"] = now.isoformat()
+
+    if entry["daily_voice_xp"] >= daily_cap:
+        _save(data)
         return 0
 
-    awarded = min(amount, daily_cap - entry["daily_xp"])
-    entry["prestige"] += awarded
-    entry["daily_xp"] += awarded
+    awarded = min(amount, daily_cap - entry["daily_voice_xp"])
+    entry["prestige"] = entry.get("prestige", 0) + awarded
+    entry["daily_voice_xp"] += awarded
+
     _save(data)
     return awarded
 
@@ -72,7 +150,7 @@ def add_honour(guild_id: int, member_id: int, amount: int) -> dict[str, Any]:
     """Add staff-granted honour. No daily cap. Amount may be negative."""
     data = _load()
     entry = data.setdefault(str(guild_id), {}).setdefault(str(member_id), _blank())
-    entry["prestige"] = max(0, entry["prestige"] + amount)
+    entry["prestige"] = max(0, entry.get("prestige", 0) + amount)
     entry["honour_total"] = max(0, entry.get("honour_total", 0) + amount)
     entry["last_active"] = datetime.now(timezone.utc).isoformat()
     _save(data)
@@ -85,7 +163,7 @@ def reset_prestige_partial(guild_id: int, member_id: int, fraction: float = 0.5)
     entry = data.get(str(guild_id), {}).get(str(member_id))
     if entry is None:
         return 0
-    entry["prestige"] = max(0, int(entry["prestige"] * (1.0 - fraction)))
+    entry["prestige"] = max(0, int(entry.get("prestige", 0) * (1.0 - fraction)))
     _save(data)
     return entry["prestige"]
 

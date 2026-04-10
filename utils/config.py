@@ -75,6 +75,20 @@ WARNING_EXILE_DURATION = "1h"      # duration string for the auto-exile
 
 INTEREST_ROLES: list[str] = []
 
+# ─── AUTO-MOD ─────────────────────────────────────────────────────────────────
+
+AUTOMOD_ENABLED = True
+AUTOMOD_SPAM_THRESHOLD = 5         # messages within AUTOMOD_SPAM_WINDOW seconds → auto-warn
+AUTOMOD_SPAM_WINDOW = 5            # seconds
+AUTOMOD_BANNED_WORDS: list[str] = []  # case-insensitive substrings; empty = disabled
+AUTOMOD_IGNORED_CHANNELS: list[str] = [BOT_TEST_CHANNEL]  # channel names exempt from auto-mod
+AUTOMOD_IGNORED_ROLES: list[str] = [  # roles whose members are never auto-modded
+    SULTAN_ROLE,
+    WALI_ROLE,
+    QAID_ROLE,
+    SHEIKH_ROLE,
+]
+
 # ─── PRESTIGE SYSTEM ─────────────────────────────────────────────────────────
 
 PRESTIGE_XP_PER_MESSAGE = 2        # base XP awarded per eligible message
@@ -83,6 +97,28 @@ PRESTIGE_XP_COOLDOWN = 60          # seconds between XP-eligible messages per me
 PRESTIGE_DECAY_INACTIVE_DAYS = 30  # days of inactivity before decay begins
 PRESTIGE_DECAY_AMOUNT = 5          # prestige lost per decay cycle
 PRESTIGE_ENFORCE_MINIMUM = False   # if True, /promote is blocked below minimum
+
+# Leveled role auto-assign — Sultan is intentionally absent: it can never be earned through XP.
+# Only roles listed here are eligible for automatic assignment.
+# M'qaddem, Sheikh, Qaïd, Wali, Sultan remain staff-only forever.
+PRESTIGE_AUTO_ROLES: dict[int, str] = {
+    50:   NOMADS_ROLE,           # First earned rank
+    300:  TALEBS_ROLE,           # Regular contributor
+    700:  AHL_AL_MEDINA_ROLE,    # Established citizen
+    1500: FQIHS_ROLE,            # Dedicated member — ceiling of auto-progression
+}
+
+# Voice XP — awarded per minute in non-AFK voice channels
+PRESTIGE_VOICE_XP_PER_MINUTE = 1
+PRESTIGE_VOICE_DAILY_CAP = 60     # max voice XP per day
+
+# Milestone announcements — set to a channel name (e.g. "⭐┃prestige") to enable.
+# Leave empty to disable tier-up announcements.
+PRESTIGE_MILESTONE_CHANNEL = ""
+
+# Activity streaks — bonus XP for consecutive days of activity
+PRESTIGE_STREAK_BONUS = 5         # bonus XP per streak day (day 2 = +5, day 3 = +10, …)
+PRESTIGE_STREAK_MAX_BONUS = 25    # streak bonus is capped at this value
 
 PRESTIGE_PROMOTION_MINIMUMS: dict[str, int] = {
     # role_name: minimum prestige required to be eligible for promotion to that role

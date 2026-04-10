@@ -6,35 +6,21 @@ from discord.ext import commands, tasks
 
 from utils import config
 from utils.authority import has_any_authority_role, resolve_rank
+from utils.channels import get_text_channel_by_name
+from utils.roles import get_role_by_name
 from utils.prestige import (
     add_message_xp,
+    add_voice_xp,
     add_honour,
     apply_decay,
     get_member_prestige,
     get_guild_leaderboard,
+    get_prestige_tier,
 )
 
 logger = logging.getLogger(__name__)
 
 _PRESTIGE_COLOR = config.PRESTIGE_EMBED_COLOR
-_TIER_BADGES = ["👑", "🥇", "🥈", "🥉", "🏅", "🎖️", "⚜️", "📜", "🌿", "⛺"]
-
-
-def _prestige_tier(score: int) -> tuple[str, str]:
-    """Return (tier_label, badge) based on prestige score."""
-    thresholds = [
-        (5000, "⭐ Legendary", "🌟"),
-        (2000, "💎 Diamond",   "💎"),
-        (1000, "🏆 Platinum",  "🏆"),
-        (500,  "🥇 Gold",      "🥇"),
-        (200,  "🥈 Silver",    "🥈"),
-        (50,   "🥉 Bronze",    "🥉"),
-        (0,    "🔘 Newcomer",  "🔘"),
-    ]
-    for threshold, label, badge in thresholds:
-        if score >= threshold:
-            return label, badge
-    return "🔘 Newcomer", "🔘"
 
 
 class Prestige(commands.Cog):
@@ -42,9 +28,11 @@ class Prestige(commands.Cog):
         self.bot = bot
         self._xp_cooldown: dict[tuple[int, int], float] = {}
         self.decay_task.start()
+        self.voice_xp_task.start()
 
     def cog_unload(self) -> None:
         self.decay_task.cancel()
+        self.voice_xp_task.cancel()
 
     # ─── DECAY BACKGROUND TASK ───────────────────────────────────────────────
 
@@ -63,6 +51,118 @@ class Prestige(commands.Cog):
     async def before_decay(self) -> None:
         await self.bot.wait_until_ready()
 
+    # ─── VOICE XP BACKGROUND TASK ────────────────────────────────────────────
+
+    @tasks.loop(minutes=1)
+    async def voice_xp_task(self) -> None:
+        for guild in self.bot.guilds:
+            afk_channel = guild.afk_channel
+            for vc in guild.voice_channels:
+                if vc == afk_channel:
+                    continue
+                for member in vc.members:
+                    if member.bot:
+                        continue
+                    if member.voice and (member.voice.self_deaf or member.voice.deaf):
+                        continue
+                    awarded = add_voice_xp(
+                        guild_id=guild.id,
+                        member_id=member.id,
+                        amount=config.PRESTIGE_VOICE_XP_PER_MINUTE,
+                        daily_cap=config.PRESTIGE_VOICE_DAILY_CAP,
+                    )
+                    if awarded:
+                        data = get_member_prestige(guild.id, member.id)
+                        score = data.get("prestige", 0)
+                        old_tier, _ = get_prestige_tier(score - awarded)
+                        new_tier, _ = get_prestige_tier(score)
+                        await self._check_prestige_roles(guild, member, score)
+                        if old_tier != new_tier:
+                            await self._announce_milestone(guild, member, old_tier, new_tier, score)
+
+    @voice_xp_task.before_loop
+    async def before_voice_xp(self) -> None:
+        await self.bot.wait_until_ready()
+
+    # ─── HELPERS ─────────────────────────────────────────────────────────────
+
+    async def _check_prestige_roles(
+        self, guild: discord.Guild, member: discord.Member, prestige: int
+    ) -> str | None:
+        """Assign the highest earned prestige auto-role. Returns role name if newly assigned."""
+        if not config.PRESTIGE_AUTO_ROLES:
+            return None
+
+        earned_role_name: str | None = None
+        for threshold in sorted(config.PRESTIGE_AUTO_ROLES.keys(), reverse=True):
+            if prestige >= threshold:
+                earned_role_name = config.PRESTIGE_AUTO_ROLES[threshold]
+                break
+
+        if earned_role_name is None:
+            return None
+
+        earned_role = get_role_by_name(guild, earned_role_name)
+        if earned_role is None:
+            return None
+
+        if earned_role in member.roles:
+            return None
+
+        try:
+            await member.add_roles(earned_role, reason="Prestige auto-role.")
+            # Remove lower auto-roles the member had previously earned
+            lower_roles = [
+                r for name in config.PRESTIGE_AUTO_ROLES.values()
+                if name != earned_role_name
+                for r in [get_role_by_name(guild, name)]
+                if r and r in member.roles
+            ]
+            if lower_roles:
+                await member.remove_roles(*lower_roles, reason="Prestige role upgrade.")
+            logger.info(
+                "Prestige auto-role '%s' assigned to member %s in guild %s.",
+                earned_role_name, member.id, guild.id,
+            )
+            return earned_role_name
+        except discord.Forbidden:
+            logger.warning(
+                "Cannot assign prestige role in guild %s — missing Manage Roles.", guild.id
+            )
+            return None
+
+    async def _announce_milestone(
+        self,
+        guild: discord.Guild,
+        member: discord.Member,
+        old_tier: str,
+        new_tier: str,
+        score: int,
+    ) -> None:
+        """Post a tier-up announcement if PRESTIGE_MILESTONE_CHANNEL is configured."""
+        if not config.PRESTIGE_MILESTONE_CHANNEL:
+            return
+        channel = get_text_channel_by_name(guild, config.PRESTIGE_MILESTONE_CHANNEL)
+        if channel is None:
+            return
+
+        _, new_badge = get_prestige_tier(score)
+        embed = discord.Embed(
+            title=f"{new_badge} Prestige Milestone Reached!",
+            description=f"{member.mention} has ascended to a new tier!",
+            color=_PRESTIGE_COLOR,
+        )
+        embed.set_thumbnail(url=member.display_avatar.url)
+        embed.add_field(name="📈 Previous Tier", value=old_tier, inline=True)
+        embed.add_field(name="🏅 New Tier", value=new_tier, inline=True)
+        embed.add_field(name="⭐ Prestige", value=f"**{score:,}**", inline=True)
+        embed.set_footer(text=f"{config.SERVER_NAME} · Prestige Registry")
+
+        try:
+            await channel.send(embed=embed)
+        except discord.Forbidden:
+            logger.warning("Cannot post milestone in channel '%s' — missing permissions.", config.PRESTIGE_MILESTONE_CHANNEL)
+
     # ─── ON MESSAGE → AWARD XP ───────────────────────────────────────────────
 
     @commands.Cog.listener()
@@ -76,14 +176,29 @@ class Prestige(commands.Cog):
         now = time.monotonic()
         if now - self._xp_cooldown.get(key, 0) < config.PRESTIGE_XP_COOLDOWN:
             return
-
         self._xp_cooldown[key] = now
-        add_message_xp(
+
+        old_data = get_member_prestige(message.guild.id, message.author.id)
+        old_score = old_data.get("prestige", 0)
+        old_tier, _ = get_prestige_tier(old_score)
+
+        awarded, streak_bonus, new_score = add_message_xp(
             guild_id=message.guild.id,
             member_id=message.author.id,
             amount=config.PRESTIGE_XP_PER_MESSAGE,
             daily_cap=config.PRESTIGE_DAILY_CAP,
+            streak_bonus_per_day=config.PRESTIGE_STREAK_BONUS,
+            streak_max_bonus=config.PRESTIGE_STREAK_MAX_BONUS,
         )
+
+        if awarded == 0 and streak_bonus == 0:
+            return
+
+        new_tier, _ = get_prestige_tier(new_score)
+        await self._check_prestige_roles(message.guild, message.author, new_score)
+
+        if old_tier != new_tier:
+            await self._announce_milestone(message.guild, message.author, old_tier, new_tier, new_score)
 
     # ─── /prestige ───────────────────────────────────────────────────────────
 
@@ -103,9 +218,11 @@ class Prestige(commands.Cog):
         data = get_member_prestige(ctx.guild.id, target.id)
         score = data.get("prestige", 0)
         daily_xp = data.get("daily_xp", 0)
+        daily_voice_xp = data.get("daily_voice_xp", 0)
         honour_total = data.get("honour_total", 0)
+        streak = data.get("streak", 0)
         rank = resolve_rank(target)
-        tier_label, tier_badge = _prestige_tier(score)
+        tier_label, tier_badge = get_prestige_tier(score)
 
         # Progress bar toward next tier
         next_thresholds = [50, 200, 500, 1000, 2000, 5000]
@@ -118,6 +235,15 @@ class Prestige(commands.Cog):
         else:
             progress_str = "🏆 *Maximum tier reached*"
 
+        # Streak bonus display
+        streak_bonus_active = min(
+            max(streak - 1, 0) * config.PRESTIGE_STREAK_BONUS,
+            config.PRESTIGE_STREAK_MAX_BONUS,
+        )
+        streak_str = f"🔥 **{streak}** day{'s' if streak != 1 else ''}"
+        if streak_bonus_active:
+            streak_str += f" (+{streak_bonus_active} XP/day bonus)"
+
         embed = discord.Embed(
             title=f"{tier_badge} Prestige Standing",
             description=f"Honour record for {target.mention}",
@@ -128,7 +254,12 @@ class Prestige(commands.Cog):
         embed.add_field(name="🏅 Tier", value=tier_label, inline=True)
         embed.add_field(name="👑 Authority Rank", value=rank, inline=True)
         embed.add_field(name="📈 Progress", value=progress_str, inline=False)
-        embed.add_field(name="📅 Today's XP", value=f"{daily_xp} / {config.PRESTIGE_DAILY_CAP}", inline=True)
+        embed.add_field(
+            name="📅 Today's XP",
+            value=f"💬 {daily_xp}/{config.PRESTIGE_DAILY_CAP}  ·  🎙️ {daily_voice_xp}/{config.PRESTIGE_VOICE_DAILY_CAP}",
+            inline=False,
+        )
+        embed.add_field(name="🔥 Activity Streak", value=streak_str, inline=True)
         embed.add_field(name="🎖️ Honour Granted", value=str(honour_total), inline=True)
         embed.set_footer(text=f"{config.SERVER_NAME} · Prestige Registry")
         await ctx.send(embed=embed)
@@ -163,7 +294,7 @@ class Prestige(commands.Cog):
         lines: list[str] = []
         for position, (member_id, data) in enumerate(top, start=1):
             score = data.get("prestige", 0)
-            tier_label, _ = _prestige_tier(score)
+            tier_label, _ = get_prestige_tier(score)
             medal = medals[position - 1] if position <= 3 else f"**{position}.**"
             member = ctx.guild.get_member(member_id)
             name = member.mention if member else f"<@{member_id}>"
@@ -183,7 +314,14 @@ class Prestige(commands.Cog):
     )
     @commands.has_permissions(manage_messages=True)
     @commands.cooldown(1, 5, commands.BucketType.user)
-    async def honour(self, ctx: commands.Context, member: discord.Member, amount: int, *, reason: str = "Staff judgement.") -> None:
+    async def honour(
+        self,
+        ctx: commands.Context,
+        member: discord.Member,
+        amount: int,
+        *,
+        reason: str = "Staff judgement.",
+    ) -> None:
         if not ctx.guild or not isinstance(ctx.author, discord.Member):
             await ctx.send("This command can only be used inside a server.")
             return
@@ -194,9 +332,17 @@ class Prestige(commands.Cog):
             await ctx.send("Amount must be non-zero.")
             return
 
+        old_data = get_member_prestige(ctx.guild.id, member.id)
+        old_tier, _ = get_prestige_tier(old_data.get("prestige", 0))
+
         entry = add_honour(ctx.guild.id, member.id, amount)
         score = entry.get("prestige", 0)
-        tier_label, tier_badge = _prestige_tier(score)
+        tier_label, tier_badge = get_prestige_tier(score)
+
+        await self._check_prestige_roles(ctx.guild, member, score)
+        new_tier, _ = get_prestige_tier(score)
+        if old_tier != new_tier and amount > 0:
+            await self._announce_milestone(ctx.guild, member, old_tier, new_tier, score)
 
         action = "granted" if amount > 0 else "deducted"
         action_icon = "✨" if amount > 0 else "💔"

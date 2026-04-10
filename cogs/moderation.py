@@ -97,6 +97,13 @@ class Moderation(commands.Cog):
         except discord.Forbidden:
             logger.warning("Cannot post to server-logs in guild %s.", guild.id)
 
+    async def send_moderation_dm(self, member: discord.Member, embed: discord.Embed) -> None:
+        """Send a DM to the affected member. Silently fails if DMs are closed."""
+        try:
+            await member.send(embed=embed)
+        except discord.Forbidden:
+            pass
+
     async def release_expired_exiles(self) -> None:
         now_timestamp = datetime.now(timezone.utc).timestamp()
         for guild_id, members in get_active_exiles().items():
@@ -119,6 +126,16 @@ class Moderation(commands.Cog):
                     except discord.Forbidden:
                         logger.warning("Cannot remove Quarantine from %s in guild %s.", member_id, guild_id)
                         continue
+                    try:
+                        dm_embed = discord.Embed(
+                            title="⏱️ Exile Expired",
+                            description=f"Your timed exile in **{guild.name}** has automatically expired. You have been released from quarantine.",
+                            color=_SUCCESS,
+                        )
+                        dm_embed.set_footer(text=f"{config.SERVER_NAME} · Auto-Release Notice")
+                        await member.send(embed=dm_embed)
+                    except discord.Forbidden:
+                        pass
                 log_embed = discord.Embed(
                     title="⏱️ Timed Exile Expired",
                     description=f"{member.mention} has been automatically released from quarantine.",
@@ -159,6 +176,21 @@ class Moderation(commands.Cog):
         all_warnings = get_member_warnings(ctx.guild.id, member.id)
         total = len(all_warnings)
 
+        # DM the member about the warning
+        warn_dm = discord.Embed(
+            title="⚠️ Formal Warning Received",
+            description=f"You have received a formal warning in **{ctx.guild.name}**.",
+            color=_MOD_RED,
+        )
+        warn_dm.add_field(name="📝 Reason", value=entry["reason"], inline=False)
+        warn_dm.add_field(
+            name="📊 Warning Count",
+            value=f"**{total}** / {config.WARNING_EXILE_THRESHOLD} before auto-exile",
+            inline=True,
+        )
+        warn_dm.set_footer(text=f"{config.SERVER_NAME} · Moderation Notice")
+        await self.send_moderation_dm(member, warn_dm)
+
         embed = discord.Embed(title="⚠️ Formal Warning Issued", color=_MOD_RED)
         embed.set_thumbnail(url=member.display_avatar.url)
         embed.add_field(name="🆔 Case", value=f"**#{entry['case_id']}**", inline=True)
@@ -189,6 +221,16 @@ class Moderation(commands.Cog):
                         value=f"Member has reached **{threshold}** warnings and has been automatically exiled for **{config.WARNING_EXILE_DURATION}**. Expires <t:{expires_ts}:R>.",
                         inline=False,
                     )
+                    exile_dm = discord.Embed(
+                        title="⛓️ Automatic Exile Triggered",
+                        description=f"You have been automatically exiled from **{ctx.guild.name}** after reaching the warning threshold.",
+                        color=discord.Color.dark_red(),
+                    )
+                    exile_dm.add_field(name="⏳ Duration", value=config.WARNING_EXILE_DURATION, inline=True)
+                    exile_dm.add_field(name="🕐 Expires", value=f"<t:{expires_ts}:R>", inline=True)
+                    exile_dm.add_field(name="📨 Appeal", value="Use `/appeal` once your exile ends to dispute this decision.", inline=False)
+                    exile_dm.set_footer(text=f"{config.SERVER_NAME} · Auto-Exile Notice")
+                    await self.send_moderation_dm(member, exile_dm)
                     logger.info(
                         "AUTO-EXILE | guild=%s | target=%s | threshold=%s",
                         ctx.guild.id, member.id, threshold,
@@ -349,6 +391,18 @@ class Moderation(commands.Cog):
         exile_entry = add_exile(guild_id=ctx.guild.id, member_id=member.id, moderator_id=ctx.author.id, reason=reason, duration_seconds=duration_seconds)
         expires_ts = int(exile_entry["expires_at"])
 
+        exile_dm = discord.Embed(
+            title="⛓️ You Have Been Exiled",
+            description=f"You have been placed in quarantine in **{ctx.guild.name}**.",
+            color=_MOD_RED,
+        )
+        exile_dm.add_field(name="📝 Reason", value=reason, inline=False)
+        exile_dm.add_field(name="⏳ Duration", value=format_duration(duration_seconds), inline=True)
+        exile_dm.add_field(name="🕐 Expires", value=f"<t:{expires_ts}:R>", inline=True)
+        exile_dm.add_field(name="📨 Appeal", value="Use `/appeal` once released to dispute this decision.", inline=False)
+        exile_dm.set_footer(text=f"{config.SERVER_NAME} · Exile Notice")
+        await self.send_moderation_dm(member, exile_dm)
+
         embed = discord.Embed(title="⛓️ Exile Decreed", description=f"{member.mention} has been moved into quarantine.", color=_MOD_RED)
         embed.set_thumbnail(url=member.display_avatar.url)
         embed.add_field(name="🆔 Case", value=f"**#{exile_entry['case_id']}**", inline=True)
@@ -463,6 +517,14 @@ class Moderation(commands.Cog):
         logger.info("MODERATION | guild=%s | mod=%s | cmd=pardon | target=%s", ctx.guild.id, ctx.author.id, member.id)
         await member.remove_roles(quarantine_role, reason=f"Pardoned by {ctx.author}")
         clear_member_exile(ctx.guild.id, member.id, resolution="pardoned")
+
+        pardon_dm = discord.Embed(
+            title="🕊️ Pardon Granted",
+            description=f"Your quarantine in **{ctx.guild.name}** has been lifted by a staff member.",
+            color=_SUCCESS,
+        )
+        pardon_dm.set_footer(text=f"{config.SERVER_NAME} · Pardon Notice")
+        await self.send_moderation_dm(member, pardon_dm)
 
         embed = discord.Embed(title="🕊️ Pardon Granted", description=f"{member.mention} has been released from quarantine.", color=_SUCCESS)
         embed.set_thumbnail(url=member.display_avatar.url)
@@ -663,6 +725,66 @@ class Moderation(commands.Cog):
         embed.add_field(name="📝 Deleted Content", value=removed["content"], inline=False)
         await ctx.send(embed=embed, ephemeral=True if ctx.interaction else False)
 
+    # ─── PURGE ───────────────────────────────────────────────────────────────
+
+    @commands.hybrid_command(name="purge", description="Bulk-delete recent messages from a channel.")
+    @app_commands.describe(
+        amount="Number of messages to delete (1–100).",
+        member="Optional: only delete messages from this member.",
+    )
+    @commands.has_permissions(manage_messages=True)
+    @commands.cooldown(1, 10, commands.BucketType.channel)
+    async def purge(
+        self,
+        ctx: commands.Context,
+        amount: int,
+        member: discord.Member | None = None,
+    ) -> None:
+        if not ctx.guild or not isinstance(ctx.channel, discord.TextChannel):
+            await ctx.send("This command can only be used in a text channel.")
+            return
+        if not await self.ensure_moderation_authority(ctx):
+            return
+        if amount < 1 or amount > 100:
+            await ctx.send(embed=discord.Embed(
+                title="❌ Invalid Amount",
+                description="Amount must be between **1** and **100**.",
+                color=discord.Color.red(),
+            ))
+            return
+
+        logger.info(
+            "MODERATION | guild=%s | mod=%s | cmd=purge | amount=%s | member=%s",
+            ctx.guild.id, ctx.author.id, amount, member.id if member else "all",
+        )
+
+        # For prefix commands, delete the invocation message so it isn't counted
+        if not ctx.interaction:
+            try:
+                await ctx.message.delete()
+            except (discord.Forbidden, discord.NotFound):
+                pass
+        else:
+            await ctx.defer(ephemeral=True)
+
+        def check(msg: discord.Message) -> bool:
+            return member is None or msg.author.id == member.id
+
+        deleted = await ctx.channel.purge(limit=amount, check=check, bulk=True)
+
+        embed = discord.Embed(
+            title="🧹 Purge Complete",
+            description=f"Deleted **{len(deleted)}** message(s) from {ctx.channel.mention}.",
+            color=_SUCCESS,
+        )
+        if member:
+            embed.add_field(name="👤 Filtered To", value=member.mention, inline=True)
+        embed.add_field(name="🛡️ Issued By", value=ctx.author.mention, inline=True)
+        embed.set_footer(text="Medina Hub · Moderation")
+
+        await ctx.send(embed=embed, ephemeral=True if ctx.interaction else False)
+        await self.send_log_embed(ctx.guild, embed.copy())
+
     # ─── ERROR HANDLER ───────────────────────────────────────────────────────
 
     @warn.error
@@ -678,6 +800,7 @@ class Moderation(commands.Cog):
     @note.error
     @notes.error
     @delnote.error
+    @purge.error
     async def moderation_error(self, ctx: commands.Context, error: commands.CommandError) -> None:
         original_error = getattr(error, "original", error)
 
